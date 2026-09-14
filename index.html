@@ -73,6 +73,23 @@
             box-sizing: border-box;
             font-size: 0.9rem;
         }
+        .zoom-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .zoom-btn {
+            background: #e4e4e7;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 6px 14px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        .zoom-btn:active {
+            background: #d1d5db;
+        }
         .color-pickers {
             display: flex;
             gap: 10px;
@@ -137,19 +154,29 @@
         <input type="file" id="photoInput" accept="image/*">
     </div>
 
+    <!-- Control de Zoom para encuadrar la cara -->
     <div class="form-group">
-        <label id="lbl-top">Texto (10 a 2 h):</label>
+        <label id="lbl-zoom">Tamaño / Zoom Foto:</label>
+        <div class="zoom-controls">
+            <button type="button" class="zoom-btn" onclick="adjustZoom(-0.1)">-</button>
+            <input type="range" id="zoomRange" min="0.4" max="2.5" step="0.05" value="1.0" oninput="setZoom(this.value)" style="flex:1;">
+            <button type="button" class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label id="lbl-top">Texto Superior:</label>
         <input type="text" id="textTop" value="CAMINO DE SANTIAGO" placeholder="Texto superior">
     </div>
 
     <div class="form-group">
-        <label id="lbl-bottom-left">Texto Izquierda (7 a 9 h):</label>
-        <input type="text" id="textBottomLeft" value="RONCESVALLES" placeholder="Texto izq">
+        <label id="lbl-bottom-left">Texto Inferior Izquierda:</label>
+        <input type="text" id="textBottomLeft" value="RONCESVALLES" placeholder="Texto izquierda">
     </div>
 
     <div class="form-group">
-        <label id="lbl-bottom-right">Texto Derecha (4 a 6 h):</label>
-        <input type="text" id="textBottomRight" value="2026" placeholder="Texto der">
+        <label id="lbl-bottom-right">Texto Inferior Derecha:</label>
+        <input type="text" id="textBottomRight" value="2026" placeholder="Texto derecha">
     </div>
 
     <div class="form-group">
@@ -172,30 +199,44 @@
 <script>
     const i18n = {
         es: { 
-            title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", 
-            top: "Texto (10 a 2 h):", bLeft: "Texto Izquierda (7 a 9 h):", bRight: "Texto Derecha (4 a 6 h):", 
+            title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:",
+            top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", 
             color: "Color de Tinta:", print: "Guardar / Imprimir Sello",
             opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo"
         },
         en: { 
-            title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", 
-            top: "Top Text (10 to 2 o'clock):", bLeft: "Left Text (7 to 9 o'clock):", bRight: "Right Text (4 to 6 o'clock):", 
+            title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:",
+            top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", 
             color: "Ink Color:", print: "Save / Print Stamp",
             opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield"
         },
         de: { 
-            title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", 
-            top: "Text oben (10 bis 2 Uhr):", bLeft: "Text links (7 bis 9 Uhr):", bRight: "Text rechts (4 bis 6 Uhr):", 
+            title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:",
+            top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", 
             color: "Stempelfarbe:", print: "Stempel Speichern / Drucken",
             opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild"
         },
         fr: { 
-            title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", 
-            top: "Texte haut (10h à 2h):", bLeft: "Texte gauche (7h à 9h):", bRight: "Texte droite (4h à 6h):", 
+            title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:",
+            top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", 
             color: "Couleur d'Encre:", print: "Enregistrer / Imprimer",
             opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason"
         }
     };
+
+    let currentZoom = 1.0;
+
+    function setZoom(val) {
+        currentZoom = parseFloat(val);
+        drawStamp();
+    }
+
+    function adjustZoom(delta) {
+        let range = document.getElementById('zoomRange');
+        let newVal = Math.min(Math.max(parseFloat(range.value) + delta, 0.4), 2.5);
+        range.value = newVal;
+        setZoom(newVal);
+    }
 
     function setLang(lang) {
         document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
@@ -203,6 +244,7 @@
         document.getElementById('ui-title').innerText = i18n[lang].title;
         document.getElementById('lbl-design').innerText = i18n[lang].design;
         document.getElementById('lbl-photo').innerText = i18n[lang].photo;
+        document.getElementById('lbl-zoom').innerText = i18n[lang].zoom;
         document.getElementById('lbl-top').innerText = i18n[lang].top;
         document.getElementById('lbl-bottom-left').innerText = i18n[lang].bLeft;
         document.getElementById('lbl-bottom-right').innerText = i18n[lang].bRight;
@@ -251,7 +293,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const centerX = 300, centerY = 300, radius = 230;
 
-        // 1. Dibujar retrato del peregrino en círculo interior con efecto grabado
+        // 1. Dibujar retrato del peregrino en círculo interior con efecto grabado y ZOOM ajustable
         ctx.save();
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -260,7 +302,7 @@
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (userImage) {
-            const size = radius * 2.1;
+            const size = (radius * 2.1) * currentZoom;
             ctx.drawImage(userImage, centerX - size/2, centerY - size/2 - 15, size, size);
             
             let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -288,7 +330,6 @@
         frameImg.crossOrigin = "anonymous";
         frameImg.src = selectedFrameSrc;
         frameImg.onload = () => {
-            // Crear canvas temporal para recolorear el marco con la tinta elegida
             let tempCanvas = document.createElement('canvas');
             tempCanvas.width = canvas.width;
             tempCanvas.height = canvas.height;
@@ -303,11 +344,11 @@
 
             for (let i = 0; i < fdataBytes.length; i += 4) {
                 let avg = (fdataBytes[i] * 0.3 + fdataBytes[i+1] * 0.59 + fdataBytes[i+2] * 0.11);
-                if (avg < 200) { // Si es parte de las líneas oscuras del marco
+                if (avg < 200) {
                     fdataBytes[i] = fr;
                     fdataBytes[i+1] = fg;
                     fdataBytes[i+2] = fb;
-                } else { // Si es fondo claro, hacerlo transparente
+                } else {
                     fdataBytes[i+3] = 0;
                 }
             }
@@ -324,14 +365,8 @@
         ctx.fillStyle = currentColor;
         ctx.font = "bold 18px Courier New";
 
-        // Posiciones exactas basadas en el formato de reloj:
-        // AAA: 10 a 2 horas (aproximadamente -2.1 a -1.0 radianes)
         drawCircularText(document.getElementById('textTop').value, centerX, centerY, radius, -Math.PI * 0.7, -Math.PI * 0.3);
-        
-        // BBB: 7 a 9 horas (aproximadamente 2.3 a 3.1 radianes)
         drawCircularText(document.getElementById('textBottomLeft').value, centerX, centerY, radius, Math.PI * 0.75, Math.PI * 1.0);
-        
-        // CCC: 4 a 6 horas (aproximadamente 0.2 a 1.0 radianes)
         drawCircularText(document.getElementById('textBottomRight').value, centerX, centerY, radius, Math.PI * 0.1, Math.PI * 0.4);
     }
 
