@@ -73,6 +73,31 @@
             box-sizing: border-box;
             font-size: 0.9rem;
         }
+        .input-with-size {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+        .input-with-size input[type="text"] {
+            flex: 1;
+        }
+        .size-btn {
+            background: #e4e4e7;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            width: 34px;
+            height: 38px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .size-btn:active {
+            background: #d1d5db;
+        }
         .zoom-controls {
             display: flex;
             align-items: center;
@@ -163,19 +188,34 @@
         </div>
     </div>
 
+    <!-- Texto Superior + Control de tamaño -->
     <div class="form-group">
         <label id="lbl-top">Texto Superior:</label>
-        <input type="text" id="textTop" value="CAMINO DE SANTIAGO" placeholder="Texto superior">
+        <div class="input-with-size">
+            <input type="text" id="textTop" value="CAMINO DE SANTIAGO" placeholder="Texto superior">
+            <button type="button" class="size-btn" onclick="adjustFontSize('Top', -2)">-</button>
+            <button type="button" class="size-btn" onclick="adjustFontSize('Top', 2)">+</button>
+        </div>
     </div>
 
+    <!-- Texto Inferior Izquierda + Control de tamaño -->
     <div class="form-group">
         <label id="lbl-bottom-left">Texto Inferior Izquierda:</label>
-        <input type="text" id="textBottomLeft" value="RONCESVALLES" placeholder="Texto izquierda">
+        <div class="input-with-size">
+            <input type="text" id="textBottomLeft" value="RONCESVALLES" placeholder="Texto izquierda">
+            <button type="button" class="size-btn" onclick="adjustFontSize('BottomLeft', -2)">-</button>
+            <button type="button" class="size-btn" onclick="adjustFontSize('BottomLeft', 2)">+</button>
+        </div>
     </div>
 
+    <!-- Texto Inferior Derecha + Control de tamaño -->
     <div class="form-group">
         <label id="lbl-bottom-right">Texto Inferior Derecha:</label>
-        <input type="text" id="textBottomRight" value="2026" placeholder="Texto derecha">
+        <div class="input-with-size">
+            <input type="text" id="textBottomRight" value="2026" placeholder="Texto derecha">
+            <button type="button" class="size-btn" onclick="adjustFontSize('BottomRight', -2)">-</button>
+            <button type="button" class="size-btn" onclick="adjustFontSize('BottomRight', 2)">+</button>
+        </div>
     </div>
 
     <div class="form-group">
@@ -224,6 +264,18 @@
     };
 
     let currentZoom = 1.0;
+    
+    // Tamaños de fuente independientes por cada texto (en px)
+    let fontSizes = {
+        Top: 18,
+        BottomLeft: 18,
+        BottomRight: 18
+    };
+
+    function adjustFontSize(key, delta) {
+        fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 10), 36);
+        drawStamp();
+    }
 
     function setZoom(val) {
         currentZoom = parseFloat(val);
@@ -291,15 +343,13 @@
     function drawStamp() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         const centerX = 300, centerY = 300;
-        
-        // Radio recortado restringido exactamente al diámetro interior blanco de los marcos
         const innerCropRadius = 185; 
 
-        // 1. Dibujar e aislar la foto dentro del centro exacto del sello
+        // 1. Dibujar retrato del peregrino en círculo interior
         ctx.save();
         ctx.beginPath();
         ctx.arc(centerX, centerY, innerCropRadius, 0, Math.PI * 2);
-        ctx.clip(); // Limita el dibujo al área circular interior
+        ctx.clip();
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -327,7 +377,7 @@
         }
         ctx.restore();
 
-        // 2. Cargar, recolorear y superponer el marco encima del retrato
+        // 2. Cargar, recolorear y superponer marco
         let selectedFrameSrc = document.getElementById('designSelect').value;
         let frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
@@ -352,7 +402,7 @@
                     fdataBytes[i+1] = fg;
                     fdataBytes[i+2] = fb;
                 } else {
-                    fdataBytes[i+3] = 0; // Transparencia para el área clara
+                    fdataBytes[i+3] = 0;
                 }
             }
             tCtx.putImageData(fData, 0, 0);
@@ -366,22 +416,22 @@
     function drawTexts() {
         const centerX = 300, centerY = 300, outerRadius = 278;
         ctx.fillStyle = currentColor;
-        ctx.font = "bold 16px Courier New";
 
-        // Posiciones adaptativas exteriores alineadas
-        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, outerRadius, -Math.PI / 2);
-        drawCurvedText(document.getElementById('textBottomLeft').value, centerX, centerY, outerRadius, Math.PI * 0.72);
-        drawCurvedText(document.getElementById('textBottomRight').value, centerX, centerY, outerRadius, Math.PI * 0.28);
+        // Dibujar cada texto con su tamaño personalizado
+        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, outerRadius, -Math.PI / 2, fontSizes.Top);
+        drawCurvedText(document.getElementById('textBottomLeft').value, centerX, centerY, outerRadius, Math.PI * 0.72, fontSizes.BottomLeft);
+        drawCurvedText(document.getElementById('textBottomRight').value, centerX, centerY, outerRadius, Math.PI * 0.28, fontSizes.BottomRight);
     }
 
-    function drawCurvedText(text, cx, cy, radius, centerAngle) {
+    function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize) {
         if (!text || text.trim() === "") return;
         ctx.save();
         ctx.textAlign = 'center';
+        ctx.font = "bold " + fontSize + "px Courier New";
         
         let len = text.length;
-        // Ajuste angular basado dinámicamente en la cantidad de caracteres
-        let arcPerChar = 0.045; 
+        // El paso angular varía según el tamaño de letra seleccionado
+        let arcPerChar = (fontSize / 400); 
         let totalArc = len * arcPerChar;
         let startAngle = centerAngle - (totalArc / 2);
 
