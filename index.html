@@ -154,12 +154,11 @@
         <input type="file" id="photoInput" accept="image/*">
     </div>
 
-    <!-- Control de Zoom para encuadrar la cara -->
     <div class="form-group">
         <label id="lbl-zoom">Tamaño / Zoom Foto:</label>
         <div class="zoom-controls">
             <button type="button" class="zoom-btn" onclick="adjustZoom(-0.1)">-</button>
-            <input type="range" id="zoomRange" min="0.4" max="2.5" step="0.05" value="1.0" oninput="setZoom(this.value)" style="flex:1;">
+            <input type="range" id="zoomRange" min="0.3" max="2.2" step="0.05" value="1.0" oninput="setZoom(this.value)" style="flex:1;">
             <button type="button" class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
         </div>
     </div>
@@ -233,7 +232,7 @@
 
     function adjustZoom(delta) {
         let range = document.getElementById('zoomRange');
-        let newVal = Math.min(Math.max(parseFloat(range.value) + delta, 0.4), 2.5);
+        let newVal = Math.min(Math.max(parseFloat(range.value) + delta, 0.3), 2.2);
         range.value = newVal;
         setZoom(newVal);
     }
@@ -291,19 +290,23 @@
 
     function drawStamp() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const centerX = 300, centerY = 300, radius = 230;
+        const centerX = 300, centerY = 300;
+        
+        // Radio recortado restringido exactamente al diámetro interior blanco de los marcos
+        const innerCropRadius = 185; 
 
-        // 1. Dibujar retrato del peregrino en círculo interior con efecto grabado y ZOOM ajustable
+        // 1. Dibujar e aislar la foto dentro del centro exacto del sello
         ctx.save();
         ctx.beginPath();
-        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-        ctx.clip();
+        ctx.arc(centerX, centerY, innerCropRadius, 0, Math.PI * 2);
+        ctx.clip(); // Limita el dibujo al área circular interior
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         if (userImage) {
-            const size = (radius * 2.1) * currentZoom;
-            ctx.drawImage(userImage, centerX - size/2, centerY - size/2 - 15, size, size);
+            const baseSize = innerCropRadius * 2.2;
+            const size = baseSize * currentZoom;
+            ctx.drawImage(userImage, centerX - size/2, centerY - size/2 - 10, size, size);
             
             let imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             let data = imgData.data;
@@ -324,7 +327,7 @@
         }
         ctx.restore();
 
-        // 2. Cargar, teñir del color seleccionado y superponer el marco encima
+        // 2. Cargar, recolorear y superponer el marco encima del retrato
         let selectedFrameSrc = document.getElementById('designSelect').value;
         let frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
@@ -349,7 +352,7 @@
                     fdataBytes[i+1] = fg;
                     fdataBytes[i+2] = fb;
                 } else {
-                    fdataBytes[i+3] = 0;
+                    fdataBytes[i+3] = 0; // Transparencia para el área clara
                 }
             }
             tCtx.putImageData(fData, 0, 0);
@@ -361,24 +364,30 @@
     }
 
     function drawTexts() {
-        const centerX = 300, centerY = 300, radius = 265;
+        const centerX = 300, centerY = 300, outerRadius = 278;
         ctx.fillStyle = currentColor;
-        ctx.font = "bold 18px Courier New";
+        ctx.font = "bold 16px Courier New";
 
-        drawCircularText(document.getElementById('textTop').value, centerX, centerY, radius, -Math.PI * 0.7, -Math.PI * 0.3);
-        drawCircularText(document.getElementById('textBottomLeft').value, centerX, centerY, radius, Math.PI * 0.75, Math.PI * 1.0);
-        drawCircularText(document.getElementById('textBottomRight').value, centerX, centerY, radius, Math.PI * 0.1, Math.PI * 0.4);
+        // Posiciones adaptativas exteriores alineadas
+        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, outerRadius, -Math.PI / 2);
+        drawCurvedText(document.getElementById('textBottomLeft').value, centerX, centerY, outerRadius, Math.PI * 0.72);
+        drawCurvedText(document.getElementById('textBottomRight').value, centerX, centerY, outerRadius, Math.PI * 0.28);
     }
 
-    function drawCircularText(text, cx, cy, radius, startAngle, endAngle) {
-        if (!text) return;
+    function drawCurvedText(text, cx, cy, radius, centerAngle) {
+        if (!text || text.trim() === "") return;
         ctx.save();
         ctx.textAlign = 'center';
+        
         let len = text.length;
-        let angleStep = (endAngle - startAngle) / Math.max(len, 1);
+        // Ajuste angular basado dinámicamente en la cantidad de caracteres
+        let arcPerChar = 0.045; 
+        let totalArc = len * arcPerChar;
+        let startAngle = centerAngle - (totalArc / 2);
+
         for (let i = 0; i < len; i++) {
             ctx.save();
-            let angle = startAngle + i * angleStep;
+            let angle = startAngle + (i + 0.5) * arcPerChar;
             ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
             ctx.rotate(angle + Math.PI / 2);
             ctx.fillText(text[i], 0, 0);
