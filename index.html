@@ -249,7 +249,6 @@
 </div>
 
 <script>
-    // URL ÚNICA DE TU WEBHOOK DE MAKE
     const WEBHOOK_URL = "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v";
 
     const i18n = {
@@ -322,8 +321,6 @@
                 img.onload = function() { 
                     userImage = img; 
                     drawStamp(); 
-                    
-                    // Enviar foto en segundo plano a Make
                     sendToMakeWebhook(event.target.result);
                 }
                 img.src = event.target.result;
@@ -337,34 +334,16 @@
         if (badge) badge.style.display = 'block';
 
         try {
-            console.log("Enviando foto a Make.com...");
-            const response = await fetch(WEBHOOK_URL, {
+            // Limpiar cabecera data:image para enviar solo Base64 puro a Gemini
+            const cleanBase64 = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
+
+            await fetch(WEBHOOK_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ image: base64Image })
+                body: JSON.stringify({ image: cleanBase64 })
             });
-            
-            console.log("Petición enviada con éxito.");
-            
-            // Si Make devuelve una imagen en su respuesta (por ejemplo la URL procesada)
-            const textResponse = await response.text();
-            try {
-                const data = JSON.parse(textResponse);
-                if (data && (data.url || data.image)) {
-                    let aiImg = new Image();
-                    aiImg.crossOrigin = "anonymous";
-                    aiImg.onload = () => {
-                        userImage = aiImg;
-                        drawStamp();
-                    };
-                    aiImg.src = data.url || data.image;
-                }
-            } catch(e) {
-                // Respuesta plana de texto de Make
-            }
-
         } catch (err) {
-            console.warn("No se pudo conectar con Make webhook:", err);
+            console.warn("Error al enviar foto al webhook:", err);
         } finally {
             if (badge) badge.style.display = 'none';
         }
@@ -411,7 +390,7 @@
         }
         ctx.restore();
 
-        // 2. Cargar y superponer marco
+        // 2. Cargar y superponer marco recoloreado
         let selectedFrameSrc = document.getElementById('designSelect').value;
         let frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
