@@ -130,6 +130,7 @@
         .preview-container {
             text-align: center;
             margin: 20px 0;
+            position: relative;
         }
         canvas {
             max-width: 100%;
@@ -137,6 +138,20 @@
             border-radius: 50%;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
             background: white;
+        }
+        .loading-badge {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 18px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            pointer-events: none;
         }
         .btn-action {
             background-color: var(--primary-color);
@@ -227,12 +242,16 @@
 
     <div class="preview-container">
         <canvas id="stampCanvas" width="600" height="600"></canvas>
+        <div id="aiLoadingBadge" class="loading-badge">✨ Procesando grabado IA...</div>
     </div>
 
     <button class="btn-action" id="btn-print" onclick="downloadStamp()">Guardar / Imprimir Sello</button>
 </div>
 
 <script>
+    // URL ÚNICA DE TU WEBHOOK DE MAKE
+    const WEBHOOK_URL = "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v";
+
     const i18n = {
         es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo" },
         en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield" },
@@ -303,12 +322,53 @@
                 img.onload = function() { 
                     userImage = img; 
                     drawStamp(); 
+                    
+                    // Enviar foto en segundo plano a Make
+                    sendToMakeWebhook(event.target.result);
                 }
                 img.src = event.target.result;
             }
             reader.readAsDataURL(file);
         }
     });
+
+    async function sendToMakeWebhook(base64Image) {
+        const badge = document.getElementById('aiLoadingBadge');
+        if (badge) badge.style.display = 'block';
+
+        try {
+            console.log("Enviando foto a Make.com...");
+            const response = await fetch(WEBHOOK_URL, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ image: base64Image })
+            });
+            
+            console.log("Petición enviada con éxito.");
+            
+            // Si Make devuelve una imagen en su respuesta (por ejemplo la URL procesada)
+            const textResponse = await response.text();
+            try {
+                const data = JSON.parse(textResponse);
+                if (data && (data.url || data.image)) {
+                    let aiImg = new Image();
+                    aiImg.crossOrigin = "anonymous";
+                    aiImg.onload = () => {
+                        userImage = aiImg;
+                        drawStamp();
+                    };
+                    aiImg.src = data.url || data.image;
+                }
+            } catch(e) {
+                // Respuesta plana de texto de Make
+            }
+
+        } catch (err) {
+            console.warn("No se pudo conectar con Make webhook:", err);
+        } finally {
+            if (badge) badge.style.display = 'none';
+        }
+    }
 
     ['textTop', 'textBottomLeft', 'textBottomRight'].forEach(id => {
         document.getElementById(id).addEventListener('input', drawStamp);
@@ -351,7 +411,7 @@
         }
         ctx.restore();
 
-        // 2. Cargar y superponer el marco
+        // 2. Cargar y superponer marco
         let selectedFrameSrc = document.getElementById('designSelect').value;
         let frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
