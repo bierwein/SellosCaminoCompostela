@@ -352,16 +352,22 @@
             });
 
             const textResponse = await response.text();
-            let data;
+            let imageUrl = "";
+
             try {
-                data = JSON.parse(textResponse);
+                const data = JSON.parse(textResponse);
+                imageUrl = data.url || (typeof data === 'string' ? data : '');
+                // Si viene como string anidado dentro de url
+                if (imageUrl.startsWith("{") || imageUrl.startsWith("\"")) {
+                    const cleaned = JSON.parse(imageUrl);
+                    imageUrl = cleaned.url || cleaned;
+                }
             } catch (e) {
-                console.error("Make hat kein valides JSON zurückgegeben:", textResponse);
-                if (badge) badge.style.display = 'none';
-                return;
+                // Si es texto plano directo o URL limpia
+                imageUrl = textResponse.trim().replace(/^["']|["']$/g, '');
             }
             
-            if (data && data.url) {
+            if (imageUrl && imageUrl.startsWith("http")) {
                 let aiImg = new Image();
                 aiImg.crossOrigin = "anonymous";
                 aiImg.onload = function() {
@@ -370,8 +376,9 @@
                     drawStamp();
                     if (badge) badge.style.display = 'none';
                 };
-                aiImg.src = data.url;
+                aiImg.src = imageUrl;
             } else {
+                console.error("No se pudo extraer una URL válida:", textResponse);
                 if (badge) badge.style.display = 'none';
             }
         } catch (err) {
@@ -411,7 +418,6 @@
             for (let i = 0; i < data.length; i += 4) {
                 let gray = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
                 
-                // Umbral ajustado para limpiar sombras pesadas y dejar trazos limpios de grabado
                 let isDark = isAiProcessed ? (gray < 170) : (gray < 110 && (i/4 % 2 === 0));
 
                 if (isDark) {
