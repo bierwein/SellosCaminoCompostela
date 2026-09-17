@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sello del Peregrino - Camino de Santiago</title>
+    <!-- Cargar SDK Oficial de fal.ai para evitar bloqueos CORS -->
+    <script src="https://cdn.jsdelivr.net/npm/@fal-ai/serverless-client/dist/index.browser.js"></script>
     <style>
         :root {
             --primary-color: #5c1d1d;
@@ -145,7 +147,7 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.82);
+            background: rgba(0, 0, 0, 0.85);
             color: white;
             padding: 12px 22px;
             border-radius: 25px;
@@ -251,19 +253,20 @@
 </div>
 
 <script>
-    // INSERTA AQUÍ TU API KEY DE FAL.AI
+    // PEGA AQUÍ TU CLAVE API DE FAL.AI (Empezará por algo como fal_...)
     const FAL_KEY = "8f4c35e2-6830-470d-8148-c822620ed818:8b575beec4e2afa12a5bdb3e83043fa8";
 
     const i18n = {
-        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⏳ Cargando tu foto..." },
+        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⏳ Loading your picture..." },
         en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⏳ Loading your picture..." },
-        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⏳ Lade dein Bild..." },
-        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⏳ Chargement de votre photo..." }
+        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⏳ Loading your picture..." },
+        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⏳ Loading your picture..." }
     };
 
     let currentZoom = 1.0;
     let fontSizes = { Top: 18, BottomLeft: 18, BottomRight: 18 };
     let currentLang = 'es';
+    let isAiProcessed = false;
 
     function adjustFontSize(key, delta) {
         fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 10), 36);
@@ -321,13 +324,14 @@
     document.getElementById('photoInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (file) {
+            isAiProcessed = false;
             const reader = new FileReader();
             reader.onload = function(event) {
                 const img = new Image();
                 img.onload = function() { 
                     userImage = img; 
                     drawStamp(); 
-                    generateEngravingWithFal(event.target.result);
+                    processWithFalSdk(event.target.result);
                 }
                 img.src = event.target.result;
             }
@@ -335,46 +339,40 @@
         }
     });
 
-    async function generateEngravingWithFal(base64Image) {
+    async function processWithFalSdk(base64Image) {
         if (!FAL_KEY || FAL_KEY.includes("TU_FAL")) {
-            console.warn("Falta configurar la clave API de fal.ai en la variable FAL_KEY.");
+            console.warn("Falta configurar la clave en FAL_KEY.");
             return;
         }
 
         const badge = document.getElementById('aiLoadingBadge');
-        if (badge) {
-            badge.innerText = i18n[currentLang]?.loading || "⏳ Loading your picture...";
-            badge.style.display = 'block';
-        }
+        if (badge) badge.style.display = 'block';
 
         try {
-            const response = await fetch("https://fal.run/fal-ai/flux/dev/image-to-image", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Key ${FAL_KEY}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
+            // Inicializar cliente fal
+            window.fal.config({ credentials: FAL_KEY });
+
+            const result = await window.fal.subscribe("fal-ai/flux/dev/image-to-image", {
+                input: {
                     image_url: base64Image,
-                    prompt: "High-contrast monochrome vintage engraved portrait asset, woodcut linocut style, crisp black lines on pure solid white background, no outer frame, facial features preserved, stamp illustration",
-                    strength: 0.65,
+                    prompt: "Masterpiece high-contrast vintage engraved portrait asset, fine line art woodcut, linocut print, black vector lines on pure white background, background completely removed, crisp detailed face contour",
+                    strength: 0.70,
                     num_inference_steps: 28
-                })
+                }
             });
 
-            const result = await response.json();
-
             if (result && result.images && result.images[0]) {
-                let aiImage = new Image();
-                aiImage.crossOrigin = "anonymous";
-                aiImage.onload = function() {
-                    userImage = aiImage;
+                let aiImg = new Image();
+                aiImg.crossOrigin = "anonymous";
+                aiImg.onload = function() {
+                    userImage = aiImg;
+                    isAiProcessed = true; // Marca que la foto ya viene grabada por IA
                     drawStamp();
                 };
-                aiImage.src = result.images[0].url;
+                aiImg.src = result.images[0].url;
             }
-        } catch (error) {
-            console.error("Error al conectar con fal.ai:", error);
+        } catch (err) {
+            console.error("Error en el SDK de Fal:", err);
         } finally {
             if (badge) badge.style.display = 'none';
         }
@@ -410,7 +408,11 @@
 
             for (let i = 0; i < data.length; i += 4) {
                 let gray = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
-                if (gray < 160) {
+                
+                // Si la imagen ya viene procesada por IA, solo reemplazamos el negro por el color de tinta
+                let isDark = isAiProcessed ? (gray < 200) : (gray < 135);
+
+                if (isDark) {
                     data[i] = rInk;
                     data[i+1] = gInk;
                     data[i+2] = bInk;
