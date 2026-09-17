@@ -330,7 +330,6 @@
                 img.onload = function() { 
                     userImage = img; 
                     drawStamp(); 
-                    // SEND TO MAKE WEBHOOK
                     sendToMakeWebhook(event.target.result);
                 }
                 img.src = event.target.result;
@@ -359,7 +358,14 @@
                 body: JSON.stringify({ image: base64Image })
             });
 
-            const data = await response.json();
+            const textResponse = await response.text();
+            let data;
+            try {
+                data = JSON.parse(textResponse);
+            } catch (e) {
+                console.error("Make hat kein valides JSON zurückgegeben:", textResponse);
+                return;
+            }
             
             if (data && data.url) {
                 let aiImg = new Image();
