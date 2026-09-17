@@ -252,14 +252,13 @@
 </div>
 
 <script>
-    const FAL_KEY = "fbb3d1d7-6608-42d4-80c9-f64ebedafdad:12d25debc8ba2f89738ccd6024761290";
     const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v";
 
     const i18n = {
-        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⏳ Loading your picture..." },
-        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⏳ Loading your picture..." },
-        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⏳ Loading your picture..." },
-        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⏳ Loading your picture..." }
+        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⏳ Loading AI engraving..." },
+        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⏳ Loading AI engraving..." },
+        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⏳ Loading AI engraving..." },
+        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⏳ Loading AI engraving..." }
     };
 
     let currentZoom = 1.0;
@@ -326,13 +325,8 @@
             isAiProcessed = false;
             const reader = new FileReader();
             reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() { 
-                    userImage = img; 
-                    drawStamp(); 
-                    sendToMakeWebhook(event.target.result);
-                }
-                img.src = event.target.result;
+                // Envía directamente a Make y espera el resultado de la IA (sin pintar la foto local previa)
+                sendToMakeWebhook(event.target.result);
             }
             reader.readAsDataURL(file);
         }
@@ -341,7 +335,7 @@
     async function sendToMakeWebhook(base64Image) {
         const badge = document.getElementById('aiLoadingBadge');
         if (badge) {
-            badge.innerText = i18n[currentLang]?.loading || "⏳ Loading your picture...";
+            badge.innerText = i18n[currentLang]?.loading || "⏳ Loading AI engraving...";
             badge.style.display = 'block';
         }
 
@@ -364,6 +358,7 @@
                 data = JSON.parse(textResponse);
             } catch (e) {
                 console.error("Make hat kein valides JSON zurückgegeben:", textResponse);
+                if (badge) badge.style.display = 'none';
                 return;
             }
             
@@ -374,12 +369,14 @@
                     userImage = aiImg;
                     isAiProcessed = true;
                     drawStamp();
+                    if (badge) badge.style.display = 'none';
                 };
                 aiImg.src = data.url;
+            } else {
+                if (badge) badge.style.display = 'none';
             }
         } catch (err) {
             console.error("Fehler beim Senden an Make:", err);
-        } finally {
             if (badge) badge.style.display = 'none';
         }
     }
@@ -415,7 +412,8 @@
             for (let i = 0; i < data.length; i += 4) {
                 let gray = data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114;
                 
-                let isDark = isAiProcessed ? (gray < 90) : (gray < 110 && (i/4 % 2 === 0));
+                // Si viene de IA, es un grabado limpio; si es la imagen por defecto de Unsplash, usa umbral normal
+                let isDark = isAiProcessed ? (gray < 200) : (gray < 110 && (i/4 % 2 === 0));
 
                 if (isDark) {
                     data[i] = rInk;
