@@ -206,12 +206,13 @@
         </div>
     </div>
 
+    <!-- ESCALA DE BRILLO AMPLIADA (10 a 240) -->
     <div class="form-group">
         <label id="lbl-brightness">Ajuste de Trazos / Detalle:</label>
         <div class="zoom-controls">
-            <button type="button" class="zoom-btn" onclick="adjustThreshold(-10)">-</button>
-            <input type="range" id="thresholdRange" min="50" max="180" step="5" value="100" oninput="drawStamp()" style="flex:1;">
-            <button type="button" class="zoom-btn" onclick="adjustThreshold(10)">+</button>
+            <button type="button" class="zoom-btn" onclick="adjustThreshold(-15)">-</button>
+            <input type="range" id="thresholdRange" min="10" max="240" step="5" value="110" oninput="drawStamp()" style="flex:1;">
+            <button type="button" class="zoom-btn" onclick="adjustThreshold(15)">+</button>
         </div>
     </div>
 
@@ -236,7 +237,6 @@
     <div class="form-group">
         <label id="lbl-bottom-right">Fecha de Llegada:</label>
         <div class="input-with-size">
-            <!-- CAMBIADO A SELECTOR DE FECHA -->
             <input type="date" id="textBottomRight" onchange="drawStamp()">
             <button type="button" class="size-btn" onclick="adjustFontSize('BottomRight', -2)">-</button>
             <button type="button" class="size-btn" onclick="adjustFontSize('BottomRight', 2)">+</button>
@@ -276,7 +276,6 @@
     let currentLang = 'es';
     let userImage = null;
 
-    // Inicializar la fecha de hoy por defecto en el input date
     window.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('textBottomRight').value = today;
@@ -302,7 +301,7 @@
 
     function adjustThreshold(delta) {
         let range = document.getElementById('thresholdRange');
-        let newVal = Math.min(Math.max(parseInt(range.value) + delta, 50), 180);
+        let newVal = Math.min(Math.max(parseInt(range.value) + delta, 10), 240);
         range.value = newVal;
         drawStamp();
     }
@@ -560,19 +559,20 @@
 
     function drawTexts() {
         const centerX = 300, centerY = 300;
-        const textRadius = 268; 
+        // RADIO EXTERIOR AMPLIADO (275) PARA QUE LOS TEXTOS FLOTEN PERFECTAMENTE AL BORDE FUERA DEL SELLO
+        const textRadius = 275; 
         ctx.fillStyle = currentColor;
 
-        // Texto superior (Arco superior)
+        // Texto superior perfectamente centrado
         drawCurvedText(document.getElementById('textTop').value, centerX, centerY, textRadius, -Math.PI / 2, fontSizes.Top, false);
         
-        // Textos inferiores perfectamente alineados al arco inferior (invertidos para correcta lectura)
+        // Textos inferiores reubicados simétricamente a los costados del borde inferior
         let leftVal = document.getElementById('textBottomLeft').value;
         let rawDate = document.getElementById('textBottomRight').value;
-        let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; // Formato europeo DD/MM/YYYY
+        let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; 
 
-        drawCurvedText(leftVal, centerX, centerY, textRadius, Math.PI * 0.73, fontSizes.BottomLeft, true);
-        drawCurvedText(rightVal, centerX, centerY, textRadius, Math.PI * 0.27, fontSizes.BottomRight, true);
+        drawCurvedText(leftVal, centerX, centerY, textRadius, Math.PI * 0.78, fontSizes.BottomLeft, true);
+        drawCurvedText(rightVal, centerX, centerY, textRadius, Math.PI * 0.22, fontSizes.BottomRight, true);
     }
 
     function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize, reverse) {
