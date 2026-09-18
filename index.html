@@ -183,22 +183,22 @@
     <h2 id="ui-title">Sello del Peregrino</h2>
 
     <div class="form-group">
-        <label id="lbl-design">Diseño de Sello:</label>
+        <label id="lbl-design">Stempeldesign:</label>
         <select id="designSelect" onchange="drawStamp()">
             <option value="marco1.jpg" id="opt-1">1. Camino Francés (Cintas)</option>
-            <option value="marco2.jpg" id="opt-2">2. Ultreia et Suseia (Conchas)</option>
-            <option value="marco3.jpg" id="opt-3">3. Pilgrim Credential (Puntos)</option>
-            <option value="marco4.jpg" id="opt-4">4. Asociación / Escudo</option>
+            <option value="marco2.jpg" id="opt-2">2. Ultreia et Suseia (Muscheln)</option>
+            <option value="marco3.jpg" id="opt-3">3. Pilgrim Credential (Punkte)</option>
+            <option value="marco4.jpg" id="opt-4">4. Verein / Schild</option>
         </select>
     </div>
 
     <div class="form-group">
-        <label id="lbl-photo">Foto del Peregrino:</label>
+        <label id="lbl-photo">Pilgerfoto:</label>
         <input type="file" id="photoInput" accept="image/*">
     </div>
 
     <div class="form-group">
-        <label id="lbl-zoom">Tamaño / Zoom Foto:</label>
+        <label id="lbl-zoom">Foto-Zoom / Skalierung:</label>
         <div class="zoom-controls">
             <button type="button" class="zoom-btn" onclick="adjustZoom(-0.1)">-</button>
             <input type="range" id="zoomRange" min="0.3" max="2.2" step="0.05" value="1.0" oninput="setZoom(this.value)" style="flex:1;">
@@ -207,7 +207,7 @@
     </div>
 
     <div class="form-group">
-        <label id="lbl-top">Texto Superior:</label>
+        <label id="lbl-top">Text oben:</label>
         <div class="input-with-size">
             <input type="text" id="textTop" value="CAMINO DE SANTIAGO" placeholder="Texto superior">
             <button type="button" class="size-btn" onclick="adjustFontSize('Top', -2)">-</button>
@@ -216,7 +216,7 @@
     </div>
 
     <div class="form-group">
-        <label id="lbl-bottom-left">Texto Inferior Izquierda:</label>
+        <label id="lbl-bottom-left">Text unten links:</label>
         <div class="input-with-size">
             <input type="text" id="textBottomLeft" value="RONCESVALLES" placeholder="Texto izquierda">
             <button type="button" class="size-btn" onclick="adjustFontSize('BottomLeft', -2)">-</button>
@@ -225,7 +225,7 @@
     </div>
 
     <div class="form-group">
-        <label id="lbl-bottom-right">Texto Inferior Derecha:</label>
+        <label id="lbl-bottom-right">Text unten rechts:</label>
         <div class="input-with-size">
             <input type="text" id="textBottomRight" value="2026" placeholder="Texto derecha">
             <button type="button" class="size-btn" onclick="adjustFontSize('BottomRight', -2)">-</button>
@@ -234,7 +234,7 @@
     </div>
 
     <div class="form-group">
-        <label id="lbl-color">Color de Tinta:</label>
+        <label id="lbl-color">Stempelfarbe:</label>
         <div class="color-pickers">
             <button class="color-btn" style="background: #5c1d1d;" onclick="setColor('#5c1d1d')"></button>
             <button class="color-btn" style="background: #1e3a8a;" onclick="setColor('#1e3a8a')"></button>
@@ -248,7 +248,7 @@
         <div id="aiLoadingBadge" class="loading-badge">⏳ Loading AI engraving...</div>
     </div>
 
-    <button class="btn-action" id="btn-print" onclick="downloadStamp()">Guardar / Imprimir Sello</button>
+    <button class="btn-action" id="btn-print" onclick="downloadStamp()">Stempel Speichern / Drucken</button>
 </div>
 
 <script>
@@ -389,7 +389,7 @@
         const centerX = 300, centerY = 300;
         const innerCropRadius = 170;
 
-        // 1. DIBUJAR Y TEÑIR LA FOTO DEL PEREGRINO UNIFORMEMENTE CON EL COLOR DE TINTA
+        // 1. DIBUJAR Y TEÑIR LA FOTO DEL PEREGRINO CON FILTRO DE LÍNEAS OSCURAS
         if (userImage) {
             let tempImgCanvas = document.createElement('canvas');
             tempImgCanvas.width = canvas.width;
@@ -419,8 +419,7 @@
                 let a = dataBytes[i+3];
                 let avg = (r * 0.299 + g * 0.587 + b * 0.114);
 
-                // Solo teñir trazos oscuros y dejar el fondo blanco de la foto transparente
-                if (avg < 200 && a > 50) {
+                if (avg < 100 && a > 50) {
                     dataBytes[i] = fr;
                     dataBytes[i+1] = fg;
                     dataBytes[i+2] = fb;
@@ -459,8 +458,7 @@
                 let a = fdataBytes[i+3];
                 let avg = (r * 0.299 + g * 0.587 + b * 0.114);
 
-                // FILTRO CLAVE: Solo pinta las líneas oscuras del marco, el fondo blanco se vuelve transparente
-                if (avg < 200 && a > 50) {
+                if (avg < 100 && a > 50) {
                     fdataBytes[i] = fr;
                     fdataBytes[i+1] = fg;
                     fdataBytes[i+2] = fb;
