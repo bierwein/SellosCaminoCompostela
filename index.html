@@ -206,6 +206,16 @@
         </div>
     </div>
 
+    <!-- NUEVO: Regler für Helligkeit / Schwellenwert des Fotos -->
+    <div class="form-group">
+        <label id="lbl-brightness">Foto-Helligkeit / Strichstärke:</label>
+        <div class="zoom-controls">
+            <button type="button" class="zoom-btn" onclick="adjustThreshold(-10)">-</button>
+            <input type="range" id="thresholdRange" min="50" max="180" step="5" value="100" oninput="drawStamp()" style="flex:1;">
+            <button type="button" class="zoom-btn" onclick="adjustThreshold(10)">+</button>
+        </div>
+    </div>
+
     <div class="form-group">
         <label id="lbl-top">Text oben:</label>
         <div class="input-with-size">
@@ -255,19 +265,19 @@
     const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v";
 
     const i18n = {
-        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⏳ Loading AI engraving..." },
-        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⏳ Loading AI engraving..." },
-        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⏳ Loading AI engraving..." },
-        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⏳ Loading AI engraving..." }
+        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", brightness: "Helligkeit / Trazos Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⏳ Loading AI engraving..." },
+        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", brightness: "Photo Brightness / Lines:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⏳ Loading AI engraving..." },
+        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", brightness: "Foto-Helligkeit / Strichstärke:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⏳ Loading AI engraving..." },
+        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", brightness: "Luminosité Photo:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⏳ Loading AI engraving..." }
     };
 
     let currentZoom = 1.0;
-    let fontSizes = { Top: 24, BottomLeft: 22, BottomRight: 22 };
+    let fontSizes = { Top: 22, BottomLeft: 20, BottomRight: 20 };
     let currentLang = 'es';
     let userImage = null;
 
     function adjustFontSize(key, delta) {
-        fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 12), 56);
+        fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 12), 48);
         drawStamp();
     }
 
@@ -283,6 +293,13 @@
         setZoom(newVal);
     }
 
+    function adjustThreshold(delta) {
+        let range = document.getElementById('thresholdRange');
+        let newVal = Math.min(Math.max(parseInt(range.value) + delta, 50), 180);
+        range.value = newVal;
+        drawStamp();
+    }
+
     function setLang(lang) {
         currentLang = lang;
         document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
@@ -291,6 +308,7 @@
         document.getElementById('lbl-design').innerText = i18n[lang].design;
         document.getElementById('lbl-photo').innerText = i18n[lang].photo;
         document.getElementById('lbl-zoom').innerText = i18n[lang].zoom;
+        document.getElementById('lbl-brightness').innerText = i18n[lang].brightness;
         document.getElementById('lbl-top').innerText = i18n[lang].top;
         document.getElementById('lbl-bottom-left').innerText = i18n[lang].bLeft;
         document.getElementById('lbl-bottom-right').innerText = i18n[lang].bRight;
@@ -389,7 +407,10 @@
         const centerX = 300, centerY = 300;
         const innerCropRadius = 170;
 
-        // 1. DIBUJAR Y TEÑIR LA FOTO DEL PEREGRINO CON FILTRO DE LÍNEAS OSCURAS
+        // Holen des Schwellenwerts vom neuen Helligkeitsregler
+        let threshold = parseInt(document.getElementById('thresholdRange').value);
+
+        // 1. FOTO DES PILGERS MIT DYNAMISCHEM SCHWELLENWERT ZEICHNEN
         if (userImage) {
             let tempImgCanvas = document.createElement('canvas');
             tempImgCanvas.width = canvas.width;
@@ -419,7 +440,7 @@
                 let a = dataBytes[i+3];
                 let avg = (r * 0.299 + g * 0.587 + b * 0.114);
 
-                if (avg < 100 && a > 50) {
+                if (avg < threshold && a > 50) {
                     dataBytes[i] = fr;
                     dataBytes[i+1] = fg;
                     dataBytes[i+2] = fb;
@@ -432,7 +453,7 @@
             ctx.drawImage(tempImgCanvas, 0, 0);
         }
 
-        // 2. DIBUJAR EL MARCO DEL SELLO Y VOLVER TRANSPARENTE EL FONDO BLANCO
+        // 2. STEMPELRAHMEN ZEICHNEN UND TRANSPARENT MACHEN
         let selectedFrameSrc = document.getElementById('designSelect').value;
         let frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
@@ -458,7 +479,7 @@
                 let a = fdataBytes[i+3];
                 let avg = (r * 0.299 + g * 0.587 + b * 0.114);
 
-                if (avg < 100 && a > 50) {
+                if (avg < 120 && a > 50) {
                     fdataBytes[i] = fr;
                     fdataBytes[i+1] = fg;
                     fdataBytes[i+2] = fb;
@@ -474,105 +495,4 @@
 
         frameImg.onerror = () => {
             drawVectorBorders(centerX, centerY);
-            drawTexts();
-        };
-
-        if(frameImg.complete && frameImg.naturalWidth !== 0) {
-            frameImg.onload();
-        } else if (frameImg.complete && frameImg.naturalWidth === 0) {
-            frameImg.onerror();
-        }
-    }
-
-    function drawVectorBorders(cx, cy) {
-        ctx.save();
-        ctx.strokeStyle = currentColor;
-        ctx.fillStyle = currentColor;
-
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 282, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 274, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(cx, cy, 172, 0, Math.PI * 2);
-        ctx.stroke();
-
-        drawStar(cx - 220, cy + 140, 5, 10, 5);
-        drawStar(cx + 220, cy + 140, 5, 10, 5);
-
-        ctx.restore();
-    }
-
-    function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
-        let rot = Math.PI / 2 * 3;
-        let x = cx;
-        let y = cy;
-        let step = Math.PI / spikes;
-
-        ctx.beginPath();
-        ctx.moveTo(cx, cy - outerRadius);
-        for (let i = 0; i < spikes; i++) {
-            x = cx + Math.cos(rot) * outerRadius;
-            y = cy + Math.sin(rot) * outerRadius;
-            ctx.lineTo(x, y);
-            rot += step;
-
-            x = cx + Math.cos(rot) * innerRadius;
-            y = cy + Math.sin(rot) * innerRadius;
-            ctx.lineTo(x, y);
-            rot += step;
-        }
-        ctx.lineTo(cx, cy - outerRadius);
-        ctx.closePath();
-        ctx.fill();
-    }
-
-    function drawTexts() {
-        const centerX = 300, centerY = 300;
-        const textRadius = 240; 
-        ctx.fillStyle = currentColor;
-
-        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, textRadius, -Math.PI / 2, fontSizes.Top);
-        drawCurvedText(document.getElementById('textBottomLeft').value, centerX, centerY, textRadius, Math.PI * 0.72, fontSizes.BottomLeft);
-        drawCurvedText(document.getElementById('textBottomRight').value, centerX, centerY, textRadius, Math.PI * 0.28, fontSizes.BottomRight);
-    }
-
-    function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize) {
-        if (!text || text.trim() === "") return;
-        ctx.save();
-        ctx.textAlign = 'center';
-        ctx.font = "bold " + fontSize + "px Courier New";
-        
-        let len = text.length;
-        let arcPerChar = (fontSize * 0.65) / radius; 
-        let totalArc = len * arcPerChar;
-        let startAngle = centerAngle - (totalArc / 2);
-
-        for (let i = 0; i < len; i++) {
-            ctx.save();
-            let angle = startAngle + (i + 0.5) * arcPerChar;
-            ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-            ctx.rotate(angle + Math.PI / 2);
-            ctx.fillText(text[i], 0, 0);
-            ctx.restore();
-        }
-        ctx.restore();
-    }
-
-    function downloadStamp() {
-        let link = document.createElement('a');
-        link.download = 'sello-peregrino.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    }
-</script>
-
-</body>
-</html>
+       
