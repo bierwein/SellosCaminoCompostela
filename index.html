@@ -571,8 +571,8 @@
         let rawDate = document.getElementById('textBottomRight').value;
         let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; 
 
-        drawCurvedText(leftVal, centerX, centerY, textRadius, Math.PI * 0.80, fontSizes.BottomLeft, true);
-        drawCurvedText(rightVal, centerX, centerY, textRadius, Math.PI * 0.52, fontSizes.BottomRight, true);
+        drawCurvedText(leftVal, centerX, centerY, textRadius, Math.PI * 0.99, fontSizes.BottomLeft, true);
+        drawCurvedText(rightVal, centerX, centerY, textRadius, Math.PI * 0.50, fontSizes.BottomRight, true);
     }
 
     function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize, reverse) {
