@@ -406,7 +406,6 @@
             iCtx.drawImage(userImage, centerX - size/2, centerY - size/2 - 10, size, size);
             iCtx.restore();
 
-            // Aplicar el color de tinta actual a la foto de la IA
             let imgData = iCtx.getImageData(0, 0, canvas.width, canvas.height);
             let dataBytes = imgData.data;
             let fr = parseInt(currentColor.slice(1,3), 16);
@@ -414,8 +413,14 @@
             let fb = parseInt(currentColor.slice(5,7), 16);
 
             for (let i = 0; i < dataBytes.length; i += 4) {
-                let avg = (dataBytes[i] * 0.299 + dataBytes[i+1] * 0.587 + dataBytes[i+2] * 0.114);
-                if (avg < 180) {
+                let r = dataBytes[i];
+                let g = dataBytes[i+1];
+                let b = dataBytes[i+2];
+                let a = dataBytes[i+3];
+                let avg = (r * 0.299 + g * 0.587 + b * 0.114);
+
+                // Solo teñir trazos oscuros y dejar el fondo blanco de la foto transparente
+                if (avg < 200 && a > 50) {
                     dataBytes[i] = fr;
                     dataBytes[i+1] = fg;
                     dataBytes[i+2] = fb;
@@ -428,7 +433,7 @@
             ctx.drawImage(tempImgCanvas, 0, 0);
         }
 
-        // 2. DIBUJAR EL MARCO DEL SELLO Y TEÑIRLO
+        // 2. DIBUJAR EL MARCO DEL SELLO Y VOLVER TRANSPARENTE EL FONDO BLANCO
         let selectedFrameSrc = document.getElementById('designSelect').value;
         let frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
@@ -451,17 +456,16 @@
                 let r = fdataBytes[i];
                 let g = fdataBytes[i+1];
                 let b = fdataBytes[i+2];
-                let alpha = fdataBytes[i+3];
-
-                // Si el píxel es oscuro (es una línea del sello) lo teñimos
+                let a = fdataBytes[i+3];
                 let avg = (r * 0.299 + g * 0.587 + b * 0.114);
-                if (avg < 200 && alpha > 50) {
+
+                // FILTRO CLAVE: Solo pinta las líneas oscuras del marco, el fondo blanco se vuelve transparente
+                if (avg < 200 && a > 50) {
                     fdataBytes[i] = fr;
                     fdataBytes[i+1] = fg;
                     fdataBytes[i+2] = fb;
                     fdataBytes[i+3] = 255;
                 } else {
-                    // Todo lo demás (el fondo blanco del marco) se vuelve transparente
                     fdataBytes[i+3] = 0;
                 }
             }
@@ -469,6 +473,7 @@
             ctx.drawImage(tempCanvas, 0, 0);
             drawTexts();
         };
+
         frameImg.onerror = () => {
             drawVectorBorders(centerX, centerY);
             drawTexts();
@@ -533,7 +538,6 @@
 
     function drawTexts() {
         const centerX = 300, centerY = 300;
-        // Radio exterior optimizado para mantener los textos grandes alineados de forma circular perfecta sin pisar el sello
         const textRadius = 240; 
         ctx.fillStyle = currentColor;
 
@@ -549,7 +553,6 @@
         ctx.font = "bold " + fontSize + "px Courier New";
         
         let len = text.length;
-        // Factor de separación proporcional ajustado para que los textos grandes no se monten
         let arcPerChar = (fontSize * 0.65) / radius; 
         let totalArc = len * arcPerChar;
         let startAngle = centerAngle - (totalArc / 2);
