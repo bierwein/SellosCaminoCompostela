@@ -448,13 +448,20 @@
             let fb = parseInt(currentColor.slice(5,7), 16);
 
             for (let i = 0; i < fdataBytes.length; i += 4) {
-                let avg = (fdataBytes[i] * 0.299 + fdataBytes[i+1] * 0.587 + fdataBytes[i+2] * 0.114);
-                if (avg < 180) {
+                let r = fdataBytes[i];
+                let g = fdataBytes[i+1];
+                let b = fdataBytes[i+2];
+                let alpha = fdataBytes[i+3];
+
+                // Si el píxel es oscuro (es una línea del sello) lo teñimos
+                let avg = (r * 0.299 + g * 0.587 + b * 0.114);
+                if (avg < 200 && alpha > 50) {
                     fdataBytes[i] = fr;
                     fdataBytes[i+1] = fg;
                     fdataBytes[i+2] = fb;
                     fdataBytes[i+3] = 255;
                 } else {
+                    // Todo lo demás (el fondo blanco del marco) se vuelve transparente
                     fdataBytes[i+3] = 0;
                 }
             }
@@ -462,7 +469,6 @@
             ctx.drawImage(tempCanvas, 0, 0);
             drawTexts();
         };
-
         frameImg.onerror = () => {
             drawVectorBorders(centerX, centerY);
             drawTexts();
