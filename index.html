@@ -557,22 +557,26 @@
         ctx.fill();
     }
 
-    function drawTexts() {
-        const centerX = 300, centerY = 300;
-        // RADIO EXTERIOR AMPLIADO (275) PARA QUE LOS TEXTOS FLOTEN PERFECTAMENTE AL BORDE FUERA DEL SELLO
-        const textRadius = 280; 
+    // --- DISTANCIAS INDEPENDIENTES PARA CADA TEXTO ---
+        const radiusTop = 265;          // Distancia del texto superior al centro
+        const radiusBottomLeft = 275;   // Distancia de "Roncesvalles" al centro
+        const radiusBottomRight = 270;  // Distancia de la fecha al centro
+        
         ctx.fillStyle = currentColor;
 
-        // Texto superior perfectamente centrado
-        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, textRadius, -Math.PI / 2, fontSizes.Top, false);
+        // 1. Texto superior
+        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, radiusTop, -Math.PI / 2, fontSizes.Top, false);
         
-        // Textos inferiores reubicados simétricamente a los costados del borde inferior
+        // 2. Textos inferiores
         let leftVal = document.getElementById('textBottomLeft').value;
         let rawDate = document.getElementById('textBottomRight').value;
         let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; 
 
-        drawCurvedText(leftVal, centerX, centerY, textRadius, Math.PI * 0.99, fontSizes.BottomLeft, true);
-        drawCurvedText(rightVal, centerX, centerY, textRadius, Math.PI * 0.50, fontSizes.BottomRight, true);
+        // Roncesvalles (Izquierda)
+        drawCurvedText(leftVal, centerX, centerY, radiusBottomLeft, Math.PI * 0.99, fontSizes.BottomLeft, true);
+        
+        // Fecha de llegada (Derecha)
+        drawCurvedText(rightVal, centerX, centerY, radiusBottomRight, Math.PI * 0.5, fontSizes.BottomRight, true);
     }
 
     function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize, reverse) {
