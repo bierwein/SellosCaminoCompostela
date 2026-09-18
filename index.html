@@ -360,7 +360,7 @@
                 imageUrl = textResponse.trim().replace(/^["']|["']$/g, '');
             }
             
-            if (imageUrl && imageUrl.startsWith("http")) {
+            if (imageUrl && (imageUrl.startsWith("http") || imageUrl.startsWith("data:"))) {
                 let aiImg = new Image();
                 aiImg.crossOrigin = "anonymous";
                 aiImg.onload = function() {
