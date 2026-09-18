@@ -495,4 +495,106 @@
 
         frameImg.onerror = () => {
             drawVectorBorders(centerX, centerY);
-       
+            drawTexts();
+        };
+
+        if(frameImg.complete && frameImg.naturalWidth !== 0) {
+            frameImg.onload();
+        } else if (frameImg.complete && frameImg.naturalWidth === 0) {
+            frameImg.onerror();
+        }
+    }
+
+    function drawVectorBorders(cx, cy) {
+        ctx.save();
+        ctx.strokeStyle = currentColor;
+        ctx.fillStyle = currentColor;
+
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 282, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 274, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 172, 0, Math.PI * 2);
+        ctx.stroke();
+
+        drawStar(cx - 220, cy + 140, 5, 10, 5);
+        drawStar(cx + 220, cy + 140, 5, 10, 5);
+
+        ctx.restore();
+    }
+
+    function drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        let step = Math.PI / spikes;
+
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius);
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y);
+            rot += step;
+        }
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    function drawTexts() {
+        const centerX = 300, centerY = 300;
+        // TEXTRADIUS NACH AUSSEN VERSETZT (268 statt 240), damit sie nicht mehr den Stempel kreuzen
+        const textRadius = 268; 
+        ctx.fillStyle = currentColor;
+
+        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, textRadius, -Math.PI / 2, fontSizes.Top);
+        drawCurvedText(document.getElementById('textBottomLeft').value, centerX, centerY, textRadius, Math.PI * 0.70, fontSizes.BottomLeft);
+        drawCurvedText(document.getElementById('textBottomRight').value, centerX, centerY, textRadius, Math.PI * 0.30, fontSizes.BottomRight);
+    }
+
+    function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize) {
+        if (!text || text.trim() === "") return;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = "bold " + fontSize + "px Courier New";
+        
+        let len = text.length;
+        let arcPerChar = (fontSize * 0.62) / radius; 
+        let totalArc = len * arcPerChar;
+        let startAngle = centerAngle - (totalArc / 2);
+
+        for (let i = 0; i < len; i++) {
+            ctx.save();
+            let angle = startAngle + (i + 0.5) * arcPerChar;
+            ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
+            ctx.rotate(angle + Math.PI / 2);
+            ctx.fillText(text[i], 0, 0);
+            ctx.restore();
+        }
+        ctx.restore();
+    }
+
+    function downloadStamp() {
+        let link = document.createElement('a');
+        link.download = 'sello-peregrino.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    }
+</script>
+
+</body>
+</html>
