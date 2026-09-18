@@ -168,6 +168,27 @@
             cursor: pointer;
             margin-top: 5px;
         }
+        /* Estilos para el visor de la cámara en directo */
+        .camera-box {
+            display: none;
+            margin-top: 8px;
+            text-align: center;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .camera-box video {
+            width: 100%;
+            max-height: 220px;
+            object-fit: cover;
+            display: block;
+        }
+        .camera-actions {
+            display: flex;
+            gap: 6px;
+            padding: 6px;
+            background: #111;
+        }
     </style>
 </head>
 <body>
@@ -192,9 +213,24 @@
         </select>
     </div>
 
+    <!-- Opción A: Subir archivo guardado -->
     <div class="form-group">
-        <label id="lbl-photo">Foto del Peregrino:</label>
+        <label id="lbl-photo">Subir Foto (Archivo):</label>
         <input type="file" id="photoInput" accept="image/*">
+    </div>
+
+    <!-- Opción B: Tomar foto en directo con la cámara de la tablet -->
+    <div class="form-group">
+        <button type="button" class="btn-action" style="background-color: #374151; font-size: 0.9rem; padding: 10px;" onclick="toggleCamera()">📷 Tomar Foto en Directo</button>
+        
+        <div id="cameraContainer" class="camera-box">
+            <video id="cameraFeed" autoplay playsinline></video>
+            <div class="camera-actions">
+                <button type="button" class="btn-action" style="background-color: #059669; margin: 0; padding: 8px;" onclick="takeSnapshot()">Capturar</button>
+                <button type="button" class="btn-action" style="background-color: #dc2626; margin: 0; padding: 8px;" onclick="closeCamera()">Cerrar</button>
+            </div>
+        </div>
+        <canvas id="snapshotCanvas" style="display:none;" width="600" height="600"></canvas>
     </div>
 
     <div class="form-group">
@@ -264,22 +300,70 @@
     const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v";
 
     const i18n = {
-        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", brightness: "Ajuste de Trazos:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Fecha de Llegada:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⚜️ Ultreia et Suseia... ⚜️" },
-        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", brightness: "Line Details:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Arrival Date:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⚜️ Ultreia et Suseia... ⚜️" },
-        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", brightness: "Strichstärke:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Ankunftsdatum:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⚜️ Ultreia et Suseia... ⚜️" },
-        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", brightness: "Détails Traits:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Date d'arrivée:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⚜️ Ultreia et Suseia... ⚜️" }
+        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Subir Foto (Archivo):", zoom: "Tamaño / Zoom Foto:", brightness: "Ajuste de Trazos:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Fecha de Llegada:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Upload Photo (File):", zoom: "Photo Zoom / Scale:", brightness: "Line Details:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Arrival Date:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Foto hochladen (Datei):", zoom: "Foto-Zoom / Skalierung:", brightness: "Strichstärke:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Ankunftsdatum:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Télécharger Photo (Fichier):", zoom: "Zoom / Taille photo:", brightness: "Détails Traits:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Date d'arrivée:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⚜️ Ultreia et Suseia... ⚜️" }
     };
 
     let currentZoom = 1.0;
     let fontSizes = { Top: 22, BottomLeft: 20, BottomRight: 20 };
     let currentLang = 'es';
     let userImage = null;
+    let mediaStream = null;
 
     window.addEventListener('DOMContentLoaded', () => {
         const today = new Date().toISOString().split('T')[0];
         document.getElementById('textBottomRight').value = today;
         drawStamp();
     });
+
+    // --- FUNCIONES DE CÁMARA EN DIRECTO ---
+    async function toggleCamera() {
+        const box = document.getElementById('cameraContainer');
+        const video = document.getElementById('cameraFeed');
+        
+        if (box.style.display === 'block') {
+            closeCamera();
+            return;
+        }
+
+        try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            video.srcObject = mediaStream;
+            box.style.display = 'block';
+        } catch (err) {
+            alert("No se pudo acceder a la cámara. Asegúrate de dar permisos o usar HTTPS.");
+            console.error(err);
+        }
+    }
+
+    function closeCamera() {
+        const box = document.getElementById('cameraContainer');
+        const video = document.getElementById('cameraFeed');
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream = null;
+        }
+        video.srcObject = null;
+        box.style.display = 'none';
+    }
+
+    function takeSnapshot() {
+        const video = document.getElementById('cameraFeed');
+        const snapCanvas = document.getElementById('snapshotCanvas');
+        const sCtx = snapCanvas.getContext('2d');
+
+        snapCanvas.width = video.videoWidth || 600;
+        snapCanvas.height = video.videoHeight || 600;
+        
+        sCtx.drawImage(video, 0, 0, snapCanvas.width, snapCanvas.height);
+        const base64Data = snapCanvas.toDataURL('image/jpeg');
+
+        closeCamera();
+        sendToMakeWebhook(base64Data);
+    }
+    // -------------------------------------
 
     function adjustFontSize(key, delta) {
         fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 12), 48);
@@ -556,11 +640,10 @@
         ctx.fill();
     }
 
-    // --- FUNCIÓN DE TEXTOS CON RADIOS Y ÁNGULOS INDEPENDIENTES ---
+    // --- TUS AJUSTES DE TEXTO CON RADIOS Y ÁNGULOS PRECISOS ---
     function drawTexts() {
         const centerX = 300, centerY = 300;
         
-        // Radios independientes para ajustar cada texto por separado
         const radiusTop = 268;         
         const radiusBottomLeft = 295;  // Radio para "Roncesvalles"
         const radiusBottomRight = 275; // Radio para la Fecha
@@ -575,10 +658,10 @@
         let rawDate = document.getElementById('textBottomRight').value;
         let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; 
 
-        // Roncesvalles (Izquierda) - Ángulo ajustado para seguir el arco inferior izquierdo
+        // Roncesvalles (Izquierda)
         drawCurvedText(leftVal, centerX, centerY, radiusBottomLeft, Math.PI * 0.99, fontSizes.BottomLeft, true);
         
-        // Fecha de llegada (Derecha) - Ángulo ajustado para seguir el arco inferior derecho
+        // Fecha de llegada (Derecha)
         drawCurvedText(rightVal, centerX, centerY, radiusBottomRight, Math.PI * 0.5, fontSizes.BottomRight, true);
     }
 
