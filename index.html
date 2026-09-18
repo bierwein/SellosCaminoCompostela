@@ -206,7 +206,6 @@
         </div>
     </div>
 
-    <!-- ESCALA DE BRILLO AMPLIADA (10 a 240) -->
     <div class="form-group">
         <label id="lbl-brightness">Ajuste de Trazos / Detalle:</label>
         <div class="zoom-controls">
@@ -557,10 +556,14 @@
         ctx.fill();
     }
 
-    // --- DISTANCIAS INDEPENDIENTES PARA CADA TEXTO ---
-        const radiusTop = 265;          // Distancia del texto superior al centro
-        const radiusBottomLeft = 275;   // Distancia de "Roncesvalles" al centro
-        const radiusBottomRight = 270;  // Distancia de la fecha al centro
+    // --- FUNCIÓN DE TEXTOS CON RADIOS Y ÁNGULOS INDEPENDIENTES ---
+    function drawTexts() {
+        const centerX = 300, centerY = 300;
+        
+        // Radios independientes para ajustar cada texto por separado
+        const radiusTop = 268;         
+        const radiusBottomLeft = 275;  // Radio para "Roncesvalles"
+        const radiusBottomRight = 270; // Radio para la Fecha
         
         ctx.fillStyle = currentColor;
 
@@ -572,10 +575,10 @@
         let rawDate = document.getElementById('textBottomRight').value;
         let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; 
 
-        // Roncesvalles (Izquierda)
+        // Roncesvalles (Izquierda) - Ángulo ajustado para seguir el arco inferior izquierdo
         drawCurvedText(leftVal, centerX, centerY, radiusBottomLeft, Math.PI * 0.99, fontSizes.BottomLeft, true);
         
-        // Fecha de llegada (Derecha)
+        // Fecha de llegada (Derecha) - Ángulo ajustado para seguir el arco inferior derecho
         drawCurvedText(rightVal, centerX, centerY, radiusBottomRight, Math.PI * 0.5, fontSizes.BottomRight, true);
     }
 
