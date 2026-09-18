@@ -65,7 +65,7 @@
             font-weight: 600;
             margin-bottom: 4px;
         }
-        input[type="text"], input[type="file"], select {
+        input[type="text"], input[type="date"], input[type="file"], select {
             width: 100%;
             padding: 10px;
             border: 1px solid #d1d5db;
@@ -78,7 +78,7 @@
             gap: 6px;
             align-items: center;
         }
-        .input-with-size input[type="text"] {
+        .input-with-size input[type="text"], .input-with-size input[type="date"] {
             flex: 1;
         }
         .size-btn {
@@ -183,22 +183,22 @@
     <h2 id="ui-title">Sello del Peregrino</h2>
 
     <div class="form-group">
-        <label id="lbl-design">Stempeldesign:</label>
+        <label id="lbl-design">Diseño de Sello:</label>
         <select id="designSelect" onchange="drawStamp()">
             <option value="marco1.jpg" id="opt-1">1. Camino Francés (Cintas)</option>
-            <option value="marco2.jpg" id="opt-2">2. Ultreia et Suseia (Muscheln)</option>
-            <option value="marco3.jpg" id="opt-3">3. Pilgrim Credential (Punkte)</option>
-            <option value="marco4.jpg" id="opt-4">4. Verein / Schild</option>
+            <option value="marco2.jpg" id="opt-2">2. Ultreia et Suseia (Conchas)</option>
+            <option value="marco3.jpg" id="opt-3">3. Pilgrim Credential (Puntos)</option>
+            <option value="marco4.jpg" id="opt-4">4. Asociación / Escudo</option>
         </select>
     </div>
 
     <div class="form-group">
-        <label id="lbl-photo">Pilgerfoto:</label>
+        <label id="lbl-photo">Foto del Peregrino:</label>
         <input type="file" id="photoInput" accept="image/*">
     </div>
 
     <div class="form-group">
-        <label id="lbl-zoom">Foto-Zoom / Skalierung:</label>
+        <label id="lbl-zoom">Tamaño / Zoom Foto:</label>
         <div class="zoom-controls">
             <button type="button" class="zoom-btn" onclick="adjustZoom(-0.1)">-</button>
             <input type="range" id="zoomRange" min="0.3" max="2.2" step="0.05" value="1.0" oninput="setZoom(this.value)" style="flex:1;">
@@ -206,9 +206,8 @@
         </div>
     </div>
 
-    <!-- NUEVO: Regler für Helligkeit / Schwellenwert des Fotos -->
     <div class="form-group">
-        <label id="lbl-brightness">Foto-Helligkeit / Strichstärke:</label>
+        <label id="lbl-brightness">Ajuste de Trazos / Detalle:</label>
         <div class="zoom-controls">
             <button type="button" class="zoom-btn" onclick="adjustThreshold(-10)">-</button>
             <input type="range" id="thresholdRange" min="50" max="180" step="5" value="100" oninput="drawStamp()" style="flex:1;">
@@ -217,7 +216,7 @@
     </div>
 
     <div class="form-group">
-        <label id="lbl-top">Text oben:</label>
+        <label id="lbl-top">Texto Superior:</label>
         <div class="input-with-size">
             <input type="text" id="textTop" value="CAMINO DE SANTIAGO" placeholder="Texto superior">
             <button type="button" class="size-btn" onclick="adjustFontSize('Top', -2)">-</button>
@@ -226,7 +225,7 @@
     </div>
 
     <div class="form-group">
-        <label id="lbl-bottom-left">Text unten links:</label>
+        <label id="lbl-bottom-left">Texto Inferior Izquierda:</label>
         <div class="input-with-size">
             <input type="text" id="textBottomLeft" value="RONCESVALLES" placeholder="Texto izquierda">
             <button type="button" class="size-btn" onclick="adjustFontSize('BottomLeft', -2)">-</button>
@@ -235,16 +234,17 @@
     </div>
 
     <div class="form-group">
-        <label id="lbl-bottom-right">Text unten rechts:</label>
+        <label id="lbl-bottom-right">Fecha de Llegada:</label>
         <div class="input-with-size">
-            <input type="text" id="textBottomRight" value="2026" placeholder="Texto derecha">
+            <!-- CAMBIADO A SELECTOR DE FECHA -->
+            <input type="date" id="textBottomRight" onchange="drawStamp()">
             <button type="button" class="size-btn" onclick="adjustFontSize('BottomRight', -2)">-</button>
             <button type="button" class="size-btn" onclick="adjustFontSize('BottomRight', 2)">+</button>
         </div>
     </div>
 
     <div class="form-group">
-        <label id="lbl-color">Stempelfarbe:</label>
+        <label id="lbl-color">Color de Tinta:</label>
         <div class="color-pickers">
             <button class="color-btn" style="background: #5c1d1d;" onclick="setColor('#5c1d1d')"></button>
             <button class="color-btn" style="background: #1e3a8a;" onclick="setColor('#1e3a8a')"></button>
@@ -255,26 +255,33 @@
 
     <div class="preview-container">
         <canvas id="stampCanvas" width="600" height="600"></canvas>
-        <div id="aiLoadingBadge" class="loading-badge">⏳ Loading AI engraving...</div>
+        <div id="aiLoadingBadge" class="loading-badge">⚜️ Ultreia et Suseia... ⚜️</div>
     </div>
 
-    <button class="btn-action" id="btn-print" onclick="downloadStamp()">Stempel Speichern / Drucken</button>
+    <button class="btn-action" id="btn-print" onclick="downloadStamp()">Guardar / Imprimir Sello</button>
 </div>
 
 <script>
     const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v";
 
     const i18n = {
-        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", brightness: "Helligkeit / Trazos Foto:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Texto Inferior Derecha:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⏳ Loading AI engraving..." },
-        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", brightness: "Photo Brightness / Lines:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Bottom Right Text:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⏳ Loading AI engraving..." },
-        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", brightness: "Foto-Helligkeit / Strichstärke:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Text unten rechts:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⏳ Loading AI engraving..." },
-        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", brightness: "Luminosité Photo:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Texte inférieur droit:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⏳ Loading AI engraving..." }
+        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Foto del Peregrino:", zoom: "Tamaño / Zoom Foto:", brightness: "Ajuste de Trazos:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Fecha de Llegada:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Pilgrim Photo:", zoom: "Photo Zoom / Scale:", brightness: "Line Details:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Arrival Date:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Pilgerfoto:", zoom: "Foto-Zoom / Skalierung:", brightness: "Strichstärke:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Ankunftsdatum:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Photo du Pèlerin:", zoom: "Zoom / Taille photo:", brightness: "Détails Traits:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Date d'arrivée:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⚜️ Ultreia et Suseia... ⚜️" }
     };
 
     let currentZoom = 1.0;
     let fontSizes = { Top: 22, BottomLeft: 20, BottomRight: 20 };
     let currentLang = 'es';
     let userImage = null;
+
+    // Inicializar la fecha de hoy por defecto en el input date
+    window.addEventListener('DOMContentLoaded', () => {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('textBottomRight').value = today;
+        drawStamp();
+    });
 
     function adjustFontSize(key, delta) {
         fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 12), 48);
@@ -330,8 +337,6 @@
 
     const canvas = document.getElementById('stampCanvas');
     const ctx = canvas.getContext('2d');
-    
-    drawStamp();
 
     document.getElementById('photoInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -347,7 +352,7 @@
     async function sendToMakeWebhook(base64Image) {
         const badge = document.getElementById('aiLoadingBadge');
         if (badge) {
-            badge.innerText = i18n[currentLang]?.loading || "⏳ Loading AI engraving...";
+            badge.innerText = i18n[currentLang]?.loading || "⚜️ Ultreia et Suseia... ⚜️";
             badge.style.display = 'block';
         }
 
@@ -406,11 +411,9 @@
 
         const centerX = 300, centerY = 300;
         const innerCropRadius = 170;
-
-        // Holen des Schwellenwerts vom neuen Helligkeitsregler
         let threshold = parseInt(document.getElementById('thresholdRange').value);
 
-        // 1. FOTO DES PILGERS MIT DYNAMISCHEM SCHWELLENWERT ZEICHNEN
+        // 1. FOTO DEL PEREGRINO
         if (userImage) {
             let tempImgCanvas = document.createElement('canvas');
             tempImgCanvas.width = canvas.width;
@@ -453,7 +456,7 @@
             ctx.drawImage(tempImgCanvas, 0, 0);
         }
 
-        // 2. STEMPELRAHMEN ZEICHNEN UND TRANSPARENT MACHEN
+        // 2. MARCO DEL SELLO
         let selectedFrameSrc = document.getElementById('designSelect').value;
         let frameImg = new Image();
         frameImg.crossOrigin = "anonymous";
@@ -557,16 +560,22 @@
 
     function drawTexts() {
         const centerX = 300, centerY = 300;
-        // TEXTRADIUS NACH AUSSEN VERSETZT (268 statt 240), damit sie nicht mehr den Stempel kreuzen
         const textRadius = 268; 
         ctx.fillStyle = currentColor;
 
-        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, textRadius, -Math.PI / 2, fontSizes.Top);
-        drawCurvedText(document.getElementById('textBottomLeft').value, centerX, centerY, textRadius, Math.PI * 0.70, fontSizes.BottomLeft);
-        drawCurvedText(document.getElementById('textBottomRight').value, centerX, centerY, textRadius, Math.PI * 0.30, fontSizes.BottomRight);
+        // Texto superior (Arco superior)
+        drawCurvedText(document.getElementById('textTop').value, centerX, centerY, textRadius, -Math.PI / 2, fontSizes.Top, false);
+        
+        // Textos inferiores perfectamente alineados al arco inferior (invertidos para correcta lectura)
+        let leftVal = document.getElementById('textBottomLeft').value;
+        let rawDate = document.getElementById('textBottomRight').value;
+        let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; // Formato europeo DD/MM/YYYY
+
+        drawCurvedText(leftVal, centerX, centerY, textRadius, Math.PI * 0.73, fontSizes.BottomLeft, true);
+        drawCurvedText(rightVal, centerX, centerY, textRadius, Math.PI * 0.27, fontSizes.BottomRight, true);
     }
 
-    function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize) {
+    function drawCurvedText(text, cx, cy, radius, centerAngle, fontSize, reverse) {
         if (!text || text.trim() === "") return;
         ctx.save();
         ctx.textAlign = 'center';
@@ -579,10 +588,18 @@
 
         for (let i = 0; i < len; i++) {
             ctx.save();
+            let charIndex = reverse ? (len - 1 - i) : i;
             let angle = startAngle + (i + 0.5) * arcPerChar;
+            
             ctx.translate(cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius);
-            ctx.rotate(angle + Math.PI / 2);
-            ctx.fillText(text[i], 0, 0);
+            
+            if (reverse) {
+                ctx.rotate(angle - Math.PI / 2);
+            } else {
+                ctx.rotate(angle + Math.PI / 2);
+            }
+            
+            ctx.fillText(text[charIndex], 0, 0);
             ctx.restore();
         }
         ctx.restore();
