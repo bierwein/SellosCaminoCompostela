@@ -168,7 +168,6 @@
             cursor: pointer;
             margin-top: 5px;
         }
-        /* Estilos para el visor de la cámara en directo */
         .camera-box {
             display: none;
             margin-top: 8px;
@@ -213,13 +212,13 @@
         </select>
     </div>
 
-    <!-- Opción A: Subir archivo guardado -->
+    <!-- Opción A: Subir archivo -->
     <div class="form-group">
         <label id="lbl-photo">Subir Foto (Archivo):</label>
         <input type="file" id="photoInput" accept="image/*">
     </div>
 
-    <!-- Opción B: Tomar foto en directo con la cámara de la tablet -->
+    <!-- Opción B: Cámara en directo -->
     <div class="form-group">
         <button type="button" class="btn-action" style="background-color: #374151; font-size: 0.9rem; padding: 10px;" onclick="toggleCamera()">📷 Tomar Foto en Directo</button>
         
@@ -240,6 +239,17 @@
             <input type="range" id="zoomRange" min="0.3" max="2.2" step="0.05" value="1.0" oninput="setZoom(this.value)" style="flex:1;">
             <button type="button" class="zoom-btn" onclick="adjustZoom(0.1)">+</button>
         </div>
+    </div>
+
+    <!-- NUEVO: Controles para mover la foto Horizontal y Verticalmente -->
+    <div class="form-group">
+        <label id="lbl-pos-x">Mover Foto (Izquierda / Derecha):</label>
+        <input type="range" id="posXRange" min="-150" max="150" step="2" value="0" oninput="drawStamp()">
+    </div>
+
+    <div class="form-group">
+        <label id="lbl-pos-y">Mover Foto (Arriba / Abajo):</label>
+        <input type="range" id="posYRange" min="-150" max="150" step="2" value="0" oninput="drawStamp()">
     </div>
 
     <div class="form-group">
@@ -300,10 +310,10 @@
     const MAKE_WEBHOOK_URL = "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v";
 
     const i18n = {
-        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Subir Foto (Archivo):", zoom: "Tamaño / Zoom Foto:", brightness: "Ajuste de Trazos:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Fecha de Llegada:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⚜️ Ultreia et Suseia... ⚜️" },
-        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Upload Photo (File):", zoom: "Photo Zoom / Scale:", brightness: "Line Details:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Arrival Date:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⚜️ Ultreia et Suseia... ⚜️" },
-        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Foto hochladen (Datei):", zoom: "Foto-Zoom / Skalierung:", brightness: "Strichstärke:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Ankunftsdatum:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⚜️ Ultreia et Suseia... ⚜️" },
-        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Télécharger Photo (Fichier):", zoom: "Zoom / Taille photo:", brightness: "Détails Traits:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Date d'arrivée:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⚜️ Ultreia et Suseia... ⚜️" }
+        es: { title: "Sello del Peregrino", design: "Diseño de Sello:", photo: "Subir Foto (Archivo):", zoom: "Tamaño / Zoom Foto:", posX: "Mover Foto (Izquierda / Derecha):", posY: "Mover Foto (Arriba / Abajo):", brightness: "Ajuste de Trazos:", top: "Texto Superior:", bLeft: "Texto Inferior Izquierda:", bRight: "Fecha de Llegada:", color: "Color de Tinta:", print: "Guardar / Imprimir Sello", opt1: "1. Camino Francés (Cintas)", opt2: "2. Ultreia et Suseia (Conchas)", opt3: "3. Pilgrim Credential (Puntos)", opt4: "4. Asociación / Escudo", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        en: { title: "Pilgrim Stamp", design: "Stamp Design:", photo: "Upload Photo (File):", zoom: "Photo Zoom / Scale:", posX: "Move Photo (Left / Right):", posY: "Move Photo (Up / Down):", brightness: "Line Details:", top: "Top Text:", bLeft: "Bottom Left Text:", bRight: "Arrival Date:", color: "Ink Color:", print: "Save / Print Stamp", opt1: "1. French Way (Ribbons)", opt2: "2. Ultreia et Suseia (Shells)", opt3: "3. Pilgrim Credential (Dots)", opt4: "4. Association / Shield", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        de: { title: "Pilgerstempel", design: "Stempeldesign:", photo: "Foto hochladen (Datei):", zoom: "Foto-Zoom / Skalierung:", posX: "Foto verschieben (Links / Rechts):", posY: "Foto verschieben (Oben / Unten):", brightness: "Strichstärke:", top: "Text oben:", bLeft: "Text unten links:", bRight: "Ankunftsdatum:", color: "Stempelfarbe:", print: "Stempel Speichern / Drucken", opt1: "1. Französischer Weg (Bänder)", opt2: "2. Ultreia et Suseia (Muscheln)", opt3: "3. Pilgrim Credential (Punkte)", opt4: "4. Verein / Schild", loading: "⚜️ Ultreia et Suseia... ⚜️" },
+        fr: { title: "Tampon du Pèlerin", design: "Modèle de Tampon:", photo: "Télécharger Photo (Fichier):", zoom: "Zoom / Taille photo:", posX: "Déplacer Photo (Gauche / Droite):", posY: "Déplacer Photo (Haut / Bas):", brightness: "Détails Traits:", top: "Texte supérieur:", bLeft: "Texte inférieur gauche:", bRight: "Date d'arrivée:", color: "Couleur d'Encre:", print: "Enregistrer / Imprimer", opt1: "1. Chemin Français (Rubans)", opt2: "2. Ultreia et Suseia (Coquilles)", opt3: "3. Pilgrim Credential (Points)", opt4: "4. Association / Blason", loading: "⚜️ Ultreia et Suseia... ⚜️" }
     };
 
     let currentZoom = 1.0;
@@ -318,7 +328,6 @@
         drawStamp();
     });
 
-    // --- FUNCIONES DE CÁMARA EN DIRECTO ---
     async function toggleCamera() {
         const box = document.getElementById('cameraContainer');
         const video = document.getElementById('cameraFeed');
@@ -363,7 +372,6 @@
         closeCamera();
         sendToMakeWebhook(base64Data);
     }
-    // -------------------------------------
 
     function adjustFontSize(key, delta) {
         fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 12), 48);
@@ -397,6 +405,8 @@
         document.getElementById('lbl-design').innerText = i18n[lang].design;
         document.getElementById('lbl-photo').innerText = i18n[lang].photo;
         document.getElementById('lbl-zoom').innerText = i18n[lang].zoom;
+        document.getElementById('lbl-pos-x').innerText = i18n[lang].posX;
+        document.getElementById('lbl-pos-y').innerText = i18n[lang].posY;
         document.getElementById('lbl-brightness').innerText = i18n[lang].brightness;
         document.getElementById('lbl-top').innerText = i18n[lang].top;
         document.getElementById('lbl-bottom-left').innerText = i18n[lang].bLeft;
@@ -470,6 +480,9 @@
                 aiImg.crossOrigin = "anonymous";
                 aiImg.onload = function() {
                     userImage = aiImg;
+                    // Reset position sliders when new photo arrives
+                    document.getElementById('posXRange').value = 0;
+                    document.getElementById('posYRange').value = 0;
                     drawStamp();
                     if (badge) badge.style.display = 'none';
                 };
@@ -494,8 +507,12 @@
         const centerX = 300, centerY = 300;
         const innerCropRadius = 170;
         let threshold = parseInt(document.getElementById('thresholdRange').value);
+        
+        // Obtener los valores de desplazamiento X e Y
+        let offsetX = parseInt(document.getElementById('posXRange').value);
+        let offsetY = parseInt(document.getElementById('posYRange').value);
 
-        // 1. FOTO DEL PEREGRINO
+        // 1. FOTO DEL PEREGRINO CON POSICIÓN DESPLAZABLE
         if (userImage) {
             let tempImgCanvas = document.createElement('canvas');
             tempImgCanvas.width = canvas.width;
@@ -509,7 +526,15 @@
 
             const baseSize = innerCropRadius * 2.2;
             const size = baseSize * currentZoom;
-            iCtx.drawImage(userImage, centerX - size/2, centerY - size/2 - 10, size, size);
+            
+            // Aplicar el desplazamiento offsetX e offsetY en el dibujo
+            iCtx.drawImage(
+                userImage, 
+                centerX - size/2 + offsetX, 
+                centerY - size/2 - 10 + offsetY, 
+                size, 
+                size
+            );
             iCtx.restore();
 
             let imgData = iCtx.getImageData(0, 0, canvas.width, canvas.height);
@@ -640,28 +665,22 @@
         ctx.fill();
     }
 
-    // --- TUS AJUSTES DE TEXTO CON RADIOS Y ÁNGULOS PRECISOS ---
     function drawTexts() {
         const centerX = 300, centerY = 300;
         
         const radiusTop = 268;         
-        const radiusBottomLeft = 295;  // Radio para "Roncesvalles"
-        const radiusBottomRight = 275; // Radio para la Fecha
+        const radiusBottomLeft = 295;  
+        const radiusBottomRight = 275; 
         
         ctx.fillStyle = currentColor;
 
-        // 1. Texto superior
         drawCurvedText(document.getElementById('textTop').value, centerX, centerY, radiusTop, -Math.PI / 2, fontSizes.Top, false);
         
-        // 2. Textos inferiores
         let leftVal = document.getElementById('textBottomLeft').value;
         let rawDate = document.getElementById('textBottomRight').value;
         let rightVal = rawDate ? rawDate.split('-').reverse().join('/') : ''; 
 
-        // Roncesvalles (Izquierda)
         drawCurvedText(leftVal, centerX, centerY, radiusBottomLeft, Math.PI * 0.99, fontSizes.BottomLeft, true);
-        
-        // Fecha de llegada (Derecha)
         drawCurvedText(rightVal, centerX, centerY, radiusBottomRight, Math.PI * 0.5, fontSizes.BottomRight, true);
     }
 
