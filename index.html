@@ -3,11 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Sello del Peregrino · Camino de Santiago · KIOSK v2</title>
+<title>Sello del Peregrino · Camino de Santiago · KIOSK v3</title>
 <style>
 /* ============================================================
-   SELLO DEL PEREGRINO - KIOSK  (BUILD v2)
+   SELLO DEL PEREGRINO - KIOSK  (BUILD v3)
    Single file. No build tools. Operator settings = CONFIG block in the script.
+
+   v3 fixes:
+   - Timer is now OUTSIDE the circular stage (it was being clipped away by
+     border-radius:50% + overflow:hidden), and is always visible.
+   - Countdowns are deadline-based wall-clock, so 20 s really is 20 s.
+   - The stage is sized to a true square in JS, so the stamp is never oval.
    ============================================================ */
 :root{
   --ink:#8a2222;
@@ -21,7 +27,6 @@
   --gold:#d8b25f;
   --ok:#2f9e6b;
   --err:#d0534a;
-  --stagemax:520px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;margin:0;overflow:hidden}
@@ -34,11 +39,8 @@ body{
 }
 button{font-family:inherit}
 
-/* ---------- build badge (so you can SEE which file is loaded) ---------- */
-#buildTag{
-  position:fixed;left:6px;bottom:6px;z-index:120;
-  font-size:.62rem;letter-spacing:.08em;color:#4a5466;pointer-events:none;
-}
+#buildTag{position:fixed;left:6px;bottom:6px;z-index:120;
+  font-size:.62rem;letter-spacing:.08em;color:#4a5466;pointer-events:none}
 
 /* ---------- screens ---------- */
 .screen{
@@ -65,12 +67,12 @@ button{font-family:inherit}
 
 h1{font-size:clamp(1.6rem,5.2vw,2.5rem);margin:.2em 0 .1em;text-align:center;font-weight:800}
 .sub{color:var(--txt-dim);text-align:center;font-size:clamp(.85rem,2.6vw,1rem);margin:0 0 4px;max-width:34ch}
-h2.scr-title{font-size:clamp(1.05rem,3.6vw,1.4rem);margin:6px 0 2px;text-align:center;font-weight:700}
+h2.scr-title{font-size:clamp(1rem,3.4vw,1.35rem);margin:6px 0 2px;text-align:center;font-weight:700}
 
 .btn{
   border:none;border-radius:14px;cursor:pointer;font-weight:800;
-  padding:16px 26px;font-size:1.02rem;min-height:56px;
-  background:var(--ink);color:#fff;transition:transform .12s ease,filter .2s ease,opacity .2s;
+  padding:15px 24px;font-size:1rem;min-height:54px;
+  background:var(--ink);color:#fff;transition:transform .12s ease,opacity .2s;
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
 }
 .btn:active{transform:scale(.97)}
@@ -79,7 +81,7 @@ h2.scr-title{font-size:clamp(1.05rem,3.6vw,1.4rem);margin:6px 0 2px;text-align:c
 .btn.big{padding:22px 54px;font-size:1.3rem;border-radius:20px;min-height:74px;
   box-shadow:0 10px 34px rgba(138,34,34,.45)}
 .btn.ok{background:var(--ok)}
-.btn.sm{padding:12px 16px;font-size:.9rem;min-height:48px;border-radius:12px}
+.btn.sm{padding:11px 15px;font-size:.88rem;min-height:46px;border-radius:12px}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;max-width:760px}
 
 /* ---------- falling decorations ---------- */
@@ -101,11 +103,17 @@ h2.scr-title{font-size:clamp(1.05rem,3.6vw,1.4rem);margin:6px 0 2px;text-align:c
 @keyframes bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-9px) rotate(2deg)}}
 .hint{color:var(--txt-dim);font-size:.82rem;text-align:center}
 
-/* ---------- stamp stage (screens 1 & 2) ---------- */
-.stagewrap{position:relative;z-index:2;flex:1 1 auto;display:flex;align-items:center;justify-content:center;width:100%;min-height:0}
-.stage{position:relative;aspect-ratio:1/1;border-radius:50%;background:#fff;
+/* ---------- stamp stage (screens 1 & 2) ----------
+   FIX (oval): the stage gets an explicit square px size from JS.
+   No aspect-ratio / percentage mixing any more.                      */
+.stagewrap{position:relative;z-index:2;flex:1 1 auto;display:flex;
+  align-items:center;justify-content:center;width:100%;min-height:0}
+.stage{
+  position:relative;border-radius:50%;background:#fff;
   box-shadow:0 12px 40px rgba(0,0,0,.55);overflow:hidden;
-  height:min(100%,var(--stagemax));width:min(100%,var(--stagemax));}
+  width:10px;height:10px;           /* replaced by JS with a real square */
+  flex:0 0 auto;
+}
 .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 #liveVideo{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scaleX(-1);
@@ -114,15 +122,24 @@ h2.scr-title{font-size:clamp(1.05rem,3.6vw,1.4rem);margin:6px 0 2px;text-align:c
 #liveVideo.nomirror{transform:translate(-50%,-50%)}
 #frameOverlay{z-index:2}
 
-.cd{
-  position:absolute;z-index:6;right:8px;top:8px;
-  width:58px;height:58px;border-radius:50%;
-  background:rgba(12,14,20,.86);border:2px solid var(--gold);
-  display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-size:1.25rem;color:var(--gold);
+/* ---------- TIMER ----------
+   FIX (invisible timer): lives in .stagewrap, NOT inside the clipped circle. */
+.timer{
+  position:absolute;z-index:8;top:0;right:0;
+  display:flex;flex-direction:column;align-items:center;gap:2px;
+  background:rgba(12,14,20,.92);border:2px solid var(--gold);
+  border-radius:16px;padding:8px 12px;min-width:72px;
+  box-shadow:0 6px 20px rgba(0,0,0,.5);
 }
-.cd.pulse{animation:pulse 1s ease-in-out infinite}
-@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.12)}}
+.timer .num{font-size:1.7rem;font-weight:800;color:var(--gold);line-height:1;font-variant-numeric:tabular-nums}
+.timer .lab{font-size:.58rem;letter-spacing:.14em;text-transform:uppercase;color:var(--txt-dim);white-space:nowrap}
+.timer.warn{border-color:var(--err);animation:pulse 1s ease-in-out infinite}
+.timer.warn .num{color:#ff8b82}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+/* thin progress bar under the number */
+.timer .bar{width:100%;height:4px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden}
+.timer .bar i{display:block;height:100%;width:100%;background:var(--gold);transition:width .2s linear}
+.timer.warn .bar i{background:var(--err)}
 
 .badge{
   position:absolute;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);
@@ -136,7 +153,7 @@ h2.scr-title{font-size:clamp(1.05rem,3.6vw,1.4rem);margin:6px 0 2px;text-align:c
 @keyframes sp{to{transform:rotate(360deg)}}
 
 /* ---------- design cards ---------- */
-.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:560px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%;max-width:520px}
 .card{
   background:var(--card);border:2px solid var(--line);border-radius:14px;
   padding:6px 4px 5px;cursor:pointer;text-align:center;transition:.18s;
@@ -147,13 +164,14 @@ h2.scr-title{font-size:clamp(1.05rem,3.6vw,1.4rem);margin:6px 0 2px;text-align:c
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card.sel .nm{color:var(--gold);font-weight:700}
 
-.datebox{display:flex;align-items:center;gap:10px;justify-content:center;width:100%;max-width:560px}
+.datebox{display:flex;align-items:center;gap:10px;justify-content:center;width:100%;max-width:520px}
 .datebox label{font-size:.8rem;color:var(--txt-dim);font-weight:600;white-space:nowrap}
 input[type="date"]{
   background:var(--card);border:1px solid var(--line);color:var(--txt);
-  padding:12px 14px;border-radius:12px;font-size:1rem;min-height:50px;flex:1;max-width:240px;
+  padding:11px 14px;border-radius:12px;font-size:1rem;min-height:48px;flex:1;max-width:230px;
 }
-.ctlblock{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:clamp(6px,1.4vh,12px);width:100%;z-index:2}
+.ctlblock{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;
+  gap:clamp(6px,1.4vh,12px);width:100%;z-index:2}
 
 /* ---------- inline error panel ---------- */
 .panel{
@@ -170,7 +188,8 @@ input[type="date"]{
 .modal .box{background:var(--card);border:1px solid var(--line);border-radius:22px;
   padding:26px 22px;max-width:440px;width:100%;text-align:center}
 .modal h3{margin:0 0 8px;font-size:1.3rem}
-.modal p{margin:0 0 18px;color:var(--txt-dim)}
+.modal p{margin:0 0 6px;color:var(--txt-dim)}
+.modal .mini{font-size:.8rem;color:var(--txt-dim);margin-bottom:16px}
 .modal .row{gap:12px}
 .modal .btn{flex:1 1 150px}
 
@@ -182,7 +201,7 @@ input[type="date"]{
 </head>
 <body>
 
-<div id="buildTag">KIOSK v2</div>
+<div id="buildTag">KIOSK v3</div>
 
 <!-- ================= SCREEN 0 : START ================= -->
 <section id="s0" class="screen">
@@ -217,11 +236,15 @@ input[type="date"]{
     <button class="btn ghost sm" id="btnBack1" data-t="back">Volver</button>
   </div>
   <h2 class="scr-title" data-t="lookCamera">Mira a la cámara</h2>
-  <div class="stagewrap">
+  <div class="stagewrap" id="wrap1">
     <div class="stage" id="stage1">
       <video id="liveVideo" autoplay playsinline muted></video>
       <canvas id="frameOverlay" width="600" height="600"></canvas>
-      <div class="cd pulse" id="cd1">10</div>
+    </div>
+    <div class="timer" id="timer1">
+      <div class="num" id="cd1">10</div>
+      <div class="bar"><i id="bar1"></i></div>
+      <div class="lab" data-t="tmrPhoto">Foto en</div>
     </div>
   </div>
   <div class="ctlblock">
@@ -245,11 +268,15 @@ input[type="date"]{
     <div class="brand" data-t="step2">Paso 2 · Tu sello</div>
     <button class="btn ghost sm" id="btnCancel2" data-t="cancel">Cancelar</button>
   </div>
-  <div class="stagewrap">
+  <div class="stagewrap" id="wrap2">
     <div class="stage" id="stage2">
       <canvas id="stampCanvas" width="600" height="600"></canvas>
       <div class="badge" id="aiBadge" style="display:none"><span class="spin"></span><span id="aiBadgeTxt"></span></div>
-      <div class="cd" id="cd2">20</div>
+    </div>
+    <div class="timer" id="timer2">
+      <div class="num" id="cd2">20</div>
+      <div class="bar"><i id="bar2"></i></div>
+      <div class="lab" data-t="tmrEdit">Tiempo</div>
     </div>
   </div>
   <div class="ctlblock">
@@ -286,6 +313,7 @@ input[type="date"]{
   <div class="box">
     <h3 data-t="tmTitle">¿Imprimimos tu sello?</h3>
     <p data-t="tmMsg">Se ha acabado el tiempo de edición.</p>
+    <div class="mini"><span data-t="tmAuto">Volvemos al inicio en</span> <b id="modalCd">25</b> s</div>
     <div class="row">
       <button class="btn ok" id="btnModalPrint" data-t="print">Imprimir sello</button>
       <button class="btn ghost" id="btnModalRestart" data-t="startAgain">Empezar de nuevo</button>
@@ -302,15 +330,15 @@ input[type="date"]{
 const CONFIG = {
   /* --- services --- */
   AI_WEBHOOK_URL   : "https://hook.eu1.make.com/lqq9d91pvhkkssmte4ukt8cik4ulgj9v",
-  PRINT_WEBHOOK_URL: "",          // optional: POST {image,filename} to the TIJ print service. "" = download only
-  DOWNLOAD_ON_PRINT: true,        // also save the JPG locally
+  PRINT_WEBHOOK_URL: "",
+  DOWNLOAD_ON_PRINT: true,
 
   /* --- fixed stamp content --- */
   TOP_TEXT   : "CAMINO DE SANTIAGO",
   PLACE_NAME : "RONCESVALLES",
   INK_COLOR  : "#8a2222",
 
-  /* --- artwork (external files, exactly as before) --- */
+  /* --- artwork (external files) --- */
   FRAMES: [
     { file:"marco1.jpg", key:"opt1" },
     { file:"marco2.jpg", key:"opt2" },
@@ -319,7 +347,7 @@ const CONFIG = {
   ],
   DEFAULT_FRAME_INDEX: 0,
 
-  /* --- geometry (600-unit stamp space, scales to any resolution) --- */
+  /* --- geometry (600-unit stamp space) --- */
   PHOTO_RADIUS     : 170,
   PHOTO_SCALE      : 1.00,
   PHOTO_OFFSET_Y   : -6,
@@ -332,7 +360,7 @@ const CONFIG = {
   RADIUS_PLACE     : 295,
   RADIUS_DATE      : 275,
 
-  /* --- timings (seconds) --- */
+  /* --- timings (seconds, wall-clock) --- */
   SELFIE_COUNTDOWN : 10,
   EDIT_COUNTDOWN   : 20,
   MODAL_TIMEOUT    : 25,
@@ -347,6 +375,7 @@ const CONFIG = {
   CAPTURE_SIZE  : 1024,
   MIRROR_SELFIE : true,
 
+  MAX_STAGE_PX  : 520,
   DEFAULT_LANG  : "es"
 };
 /* ========================= END OF OPERATOR CONFIG ========================== */
@@ -358,6 +387,7 @@ const CONFIG = {
 const I18N = {
 es:{welcomeTitle:"Sello del Peregrino",welcomeSub:"Hazte una foto y llévate tu sello en la credencial.",start:"Comenzar",startHint:"Toca la pantalla para empezar",
  step1:"Paso 1 · Foto",lookCamera:"Mira a la cámara",shootNow:"Hacer la foto ahora",back:"Volver",cancel:"Cancelar",retry:"Reintentar",uploadPhoto:"Subir foto",
+ tmrPhoto:"Foto en",tmrEdit:"Tiempo",tmAuto:"Volvemos al inicio en",
  camErrTitle:"No se puede abrir la cámara",
  errFile:"La página se ha abierto como archivo local. Los navegadores bloquean la cámara así. Ábrela desde un servidor web (http/https).",
  errPerm:"Permiso denegado. Acepta el acceso a la cámara en el navegador.",
@@ -373,6 +403,7 @@ es:{welcomeTitle:"Sello del Peregrino",welcomeSub:"Hazte una foto y llévate tu 
  taint:"Aviso del operador: abre la app desde un servidor web (http/https), no como archivo local, o no se podrá exportar el sello."},
 en:{welcomeTitle:"Pilgrim Stamp",welcomeSub:"Take a selfie and get your stamp in your credential.",start:"Start",startHint:"Touch the screen to begin",
  step1:"Step 1 · Photo",lookCamera:"Look at the camera",shootNow:"Take the photo now",back:"Back",cancel:"Cancel",retry:"Retry",uploadPhoto:"Upload photo",
+ tmrPhoto:"Photo in",tmrEdit:"Time left",tmAuto:"Back to start in",
  camErrTitle:"Cannot open the camera",
  errFile:"The page was opened as a local file. Browsers block the camera in that case. Open it from a web server (http/https).",
  errPerm:"Permission denied. Please allow camera access in the browser.",
@@ -388,6 +419,7 @@ en:{welcomeTitle:"Pilgrim Stamp",welcomeSub:"Take a selfie and get your stamp in
  taint:"Operator notice: serve this app over http/https, not as a local file, otherwise the stamp cannot be exported."},
 de:{welcomeTitle:"Pilgerstempel",welcomeSub:"Mach ein Selfie und erhalte deinen Stempel im Pilgerpass.",start:"Starten",startHint:"Bildschirm berühren zum Starten",
  step1:"Schritt 1 · Foto",lookCamera:"Schau in die Kamera",shootNow:"Jetzt fotografieren",back:"Zurück",cancel:"Abbrechen",retry:"Erneut versuchen",uploadPhoto:"Foto hochladen",
+ tmrPhoto:"Foto in",tmrEdit:"Restzeit",tmAuto:"Zurück zum Start in",
  camErrTitle:"Kamera kann nicht geöffnet werden",
  errFile:"Die Seite wurde als lokale Datei geöffnet. Browser blockieren dann die Kamera. Bitte über einen Webserver (http/https) öffnen.",
  errPerm:"Zugriff verweigert. Bitte den Kamerazugriff im Browser erlauben.",
@@ -403,6 +435,7 @@ de:{welcomeTitle:"Pilgerstempel",welcomeSub:"Mach ein Selfie und erhalte deinen 
  taint:"Hinweis für den Betreiber: App über http/https bereitstellen, nicht als lokale Datei – sonst ist kein Export möglich."},
 fr:{welcomeTitle:"Tampon du Pèlerin",welcomeSub:"Prends un selfie et repars avec ton tampon sur ta crédentiale.",start:"Commencer",startHint:"Touchez l'écran pour commencer",
  step1:"Étape 1 · Photo",lookCamera:"Regardez l'objectif",shootNow:"Prendre la photo maintenant",back:"Retour",cancel:"Annuler",retry:"Réessayer",uploadPhoto:"Envoyer une photo",
+ tmrPhoto:"Photo dans",tmrEdit:"Temps",tmAuto:"Retour à l'accueil dans",
  camErrTitle:"Impossible d'ouvrir la caméra",
  errFile:"La page a été ouverte en fichier local. Les navigateurs bloquent alors la caméra. Ouvrez-la depuis un serveur web (http/https).",
  errPerm:"Autorisation refusée. Merci d'autoriser la caméra dans le navigateur.",
@@ -425,7 +458,7 @@ const T = k => (I18N[LANG] && I18N[LANG][k]) || I18N.es[k] || k;
    --------------------------------------------------------------------------- */
 const $  = id => document.getElementById(id);
 const S  = { frame: CONFIG.DEFAULT_FRAME_INDEX, date: todayISO(), aiImage: null,
-             rawPhoto: null, aiAttempt: 0, screen: null, printing:false };
+             rawPhoto: null, aiAttempt: 0, screen: null, printing:false, editStarted:false };
 const timers = { selfie:null, edit:null, idle:null, modal:null, done:null, fall:[] };
 
 function todayISO(){ const d=new Date(), p=n=>String(n).padStart(2,'0');
@@ -435,7 +468,29 @@ function clearTimer(k){ if(timers[k]){ clearInterval(timers[k]); clearTimeout(ti
 function hexToRgb(h){ return {r:parseInt(h.slice(1,3),16), g:parseInt(h.slice(3,5),16), b:parseInt(h.slice(5,7),16)}; }
 
 /* ---------------------------------------------------------------------------
-   4) frame artwork: load the four JPGs, recolour to the ink colour
+   3b) DEADLINE-BASED COUNTDOWN
+   Ticks every 200 ms and reads the wall clock, so N seconds is exactly
+   N seconds even if the browser throttles timers. Never restarts by itself.
+   --------------------------------------------------------------------------- */
+function runCountdown(key, seconds, numEl, barEl, boxEl, onEnd){
+  clearTimer(key);
+  const total = seconds*1000, end = Date.now()+total;
+  const paint = () => {
+    const left = Math.max(0, end - Date.now());
+    const secs = Math.ceil(left/1000);
+    if(numEl) numEl.textContent = secs;
+    if(barEl) barEl.style.width = (left/total*100)+'%';
+    if(boxEl) boxEl.classList.toggle('warn', secs<=5);
+    return left;
+  };
+  paint();
+  timers[key] = setInterval(() => {
+    if(paint() <= 0){ clearTimer(key); if(onEnd) onEnd(); }
+  }, 200);
+}
+
+/* ---------------------------------------------------------------------------
+   4) frame artwork
    --------------------------------------------------------------------------- */
 const FRAME_CACHE = [];
 let CANVAS_TAINTED = false;
@@ -480,7 +535,7 @@ async function preloadFrames(){
 }
 
 /* ---------------------------------------------------------------------------
-   5) THE ONE renderer — identical geometry for preview, overlay and export
+   5) THE ONE renderer
    --------------------------------------------------------------------------- */
 function renderStamp(ctx, size, opts){
   const o = Object.assign({photo:null, frame:S.frame, date:S.date,
@@ -489,7 +544,6 @@ function renderStamp(ctx, size, opts){
 
   ctx.clearRect(0,0,size,size);
   if(o.background){ ctx.fillStyle="#ffffff"; ctx.fillRect(0,0,size,size); }
-
   if(o.drawPhoto && o.photo) drawPhotoInk(ctx, size, o.photo);
 
   const F = FRAME_CACHE[o.frame];
@@ -502,11 +556,10 @@ function renderStamp(ctx, size, opts){
   }
 
   ctx.fillStyle = CONFIG.INK_COLOR;
-  curvedText(ctx, CONFIG.TOP_TEXT,   cx, cy, CONFIG.RADIUS_TOP*k,   -Math.PI/2,    CONFIG.FONT_TOP*k,   false);
-  curvedText(ctx, CONFIG.PLACE_NAME, cx, cy, CONFIG.RADIUS_PLACE*k,  Math.PI*0.99, CONFIG.FONT_PLACE*k, true);
-  curvedText(ctx, isoToPretty(o.date), cx, cy, CONFIG.RADIUS_DATE*k, Math.PI*0.5,  CONFIG.FONT_DATE*k,  true);
+  curvedText(ctx, CONFIG.TOP_TEXT,     cx, cy, CONFIG.RADIUS_TOP*k,   -Math.PI/2,    CONFIG.FONT_TOP*k,   false);
+  curvedText(ctx, CONFIG.PLACE_NAME,   cx, cy, CONFIG.RADIUS_PLACE*k,  Math.PI*0.99, CONFIG.FONT_PLACE*k, true);
+  curvedText(ctx, isoToPretty(o.date), cx, cy, CONFIG.RADIUS_DATE*k,   Math.PI*0.5,  CONFIG.FONT_DATE*k,  true);
 }
-
 function drawPhotoInk(ctx, size, img){
   const k = size/600, cx=size/2, cy=size/2;
   const R = CONFIG.PHOTO_RADIUS*k;
@@ -536,7 +589,6 @@ function drawPhotoInk(ctx, size, img){
     ctx.save(); ctx.globalCompositeOperation='multiply'; ctx.drawImage(t,0,0); ctx.restore();
   }
 }
-
 function drawVectorBorder(ctx,size){
   const k=size/600, cx=size/2, cy=size/2;
   ctx.save(); ctx.strokeStyle=CONFIG.INK_COLOR; ctx.fillStyle=CONFIG.INK_COLOR;
@@ -573,29 +625,58 @@ function curvedText(ctx,text,cx,cy,radius,centerAngle,fontSize,reverse){
 }
 
 /* ---------------------------------------------------------------------------
-   6) screen routing
+   6) SQUARE STAGE SIZING  (fixes the oval stamp)
+   --------------------------------------------------------------------------- */
+function sizeStage(wrapId, stageId){
+  const wrap=$(wrapId), stage=$(stageId);
+  if(!wrap || !stage) return 0;
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  if(!w || !h) return 0;
+  const side = Math.max(120, Math.floor(Math.min(w, h, CONFIG.MAX_STAGE_PX)));
+  stage.style.width  = side+'px';
+  stage.style.height = side+'px';     // always an exact square -> perfect circle
+  return side;
+}
+function sizeStages(){
+  sizeStage('wrap1','stage1');
+  sizeStage('wrap2','stage2');
+  layoutVideo();
+}
+window.addEventListener('resize', sizeStages);
+window.addEventListener('orientationchange', ()=>setTimeout(sizeStages,250));
+if(window.ResizeObserver){
+  const ro=new ResizeObserver(()=>sizeStages());
+  window.addEventListener('DOMContentLoaded',()=>{ ro.observe($('wrap1')); ro.observe($('wrap2')); });
+}
+
+/* ---------------------------------------------------------------------------
+   7) screen routing
    --------------------------------------------------------------------------- */
 function go(id){
   ['s0','s1','s2','s3'].forEach(function(s){ const el=$(s); el.classList.remove('visible'); el.classList.remove('show'); });
   const el=$(id); el.classList.add('show');
-  requestAnimationFrame(function(){ requestAnimationFrame(function(){ el.classList.add('visible'); }); });
+  requestAnimationFrame(function(){ sizeStages(); requestAnimationFrame(function(){ el.classList.add('visible'); sizeStages(); }); });
   S.screen=id;
   closeModal();
   if(id!=='s1') stopCamera();
-  clearTimer('selfie'); clearTimer('edit'); clearTimer('modal'); clearTimer('done');
+  clearTimer('selfie'); clearTimer('modal'); clearTimer('done');
+  if(id!=='s2') clearTimer('edit');
   stopFalling();
-  sizeStages();
   if(id==='s0'){ resetSession(); startFalling('fall0'); drawSamples(); armIdle(false); }
   if(id==='s1'){ startFalling('fall1'); enterSelfie(); armIdle(true); }
   if(id==='s2'){ enterEdit(); armIdle(true); }
   if(id==='s3'){ startFalling('fall3'); timers.done=setTimeout(function(){go('s0');}, CONFIG.DONE_TIMEOUT*1000); armIdle(false); }
 }
 function resetSession(){
-  S.aiImage=null; S.rawPhoto=null; S.aiAttempt=0; S.printing=false;
+  S.aiImage=null; S.rawPhoto=null; S.aiAttempt=0; S.printing=false; S.editStarted=false;
   S.frame=CONFIG.DEFAULT_FRAME_INDEX; S.date=todayISO();
   $('dateInput').value=S.date; $('btnPrint').disabled=true;
   $('aiError').style.display='none'; $('camError').style.display='none';
   $('aiErrMsg').textContent=T('aiErrMsg');
+  $('cd2').textContent=CONFIG.EDIT_COUNTDOWN;
+  $('bar2').style.width='100%'; $('timer2').classList.remove('warn');
+  $('cd1').textContent=CONFIG.SELFIE_COUNTDOWN;
+  $('bar1').style.width='100%'; $('timer1').classList.remove('warn');
   updateCards();
 }
 function armIdle(on){
@@ -605,14 +686,8 @@ function armIdle(on){
 function bumpIdle(){ if(S.screen==='s1'||S.screen==='s2') armIdle(true); }
 ['pointerdown','keydown'].forEach(function(e){ document.addEventListener(e,bumpIdle,{passive:true}); });
 
-function sizeStages(){
-  document.documentElement.style.setProperty('--stagemax', Math.min(window.innerWidth-28, 560)+'px');
-  layoutVideo();
-}
-window.addEventListener('resize', sizeStages);
-
 /* ---------------------------------------------------------------------------
-   7) falling hearts / stars / smileys
+   8) falling hearts / stars / smileys
    --------------------------------------------------------------------------- */
 const GLYPHS = ['❤️','⭐','🙂','🐚','✨','💛','😊','⭐'];
 function startFalling(containerId){
@@ -637,7 +712,7 @@ function stopFalling(){
 }
 
 /* ---------------------------------------------------------------------------
-   8) SCREEN 0 – sample stamps with the real frames
+   9) SCREEN 0 – samples
    --------------------------------------------------------------------------- */
 function drawSamples(){
   const pool=[0,1,2,3].sort(function(){ return Math.random()-0.5; });
@@ -648,7 +723,7 @@ function drawSamples(){
 }
 
 /* ---------------------------------------------------------------------------
-   9) SCREEN 1 – camera inside the frame, matching the final crop exactly
+   10) SCREEN 1 – selfie
    --------------------------------------------------------------------------- */
 let stream=null;
 const video=$('liveVideo');
@@ -668,9 +743,9 @@ function drawOverlay(){
 async function enterSelfie(){
   $('camError').style.display='none';
   $('btnShoot').style.display='';
-  $('cd1').style.display='';
+  $('timer1').style.display='';
   drawOverlay();
-  requestAnimationFrame(layoutVideo);
+  requestAnimationFrame(function(){ sizeStages(); });
   await startCamera();
 }
 async function startCamera(){
@@ -683,8 +758,8 @@ async function startCamera(){
     video.srcObject = stream;
     try{ await video.play(); }catch(e){}
     $('camError').style.display='none';
-    layoutVideo();
-    startSelfieCountdown();
+    sizeStages();
+    runCountdown('selfie', CONFIG.SELFIE_COUNTDOWN, $('cd1'), $('bar1'), $('timer1'), shoot);
   }catch(err){
     const n = err && err.name;
     if(n==='NotAllowedError'||n==='SecurityError') showCamError(T('errPerm'));
@@ -695,7 +770,7 @@ async function startCamera(){
 }
 function showCamError(msg){
   clearTimer('selfie');
-  $('cd1').style.display='none';
+  $('timer1').style.display='none';
   $('btnShoot').style.display='none';
   $('camErrMsg').textContent=msg;
   $('camError').style.display='';
@@ -703,15 +778,6 @@ function showCamError(msg){
 function stopCamera(){
   if(stream){ stream.getTracks().forEach(function(t){ t.stop(); }); stream=null; }
   if(video) video.srcObject=null;
-}
-function startSelfieCountdown(){
-  clearTimer('selfie');
-  let n=CONFIG.SELFIE_COUNTDOWN;
-  const badge=$('cd1'); badge.style.display=''; badge.textContent=n;
-  timers.selfie=setInterval(function(){
-    n--; badge.textContent=Math.max(n,0);
-    if(n<=0){ clearTimer('selfie'); shoot(); }
-  },1000);
 }
 function shoot(){
   clearTimer('selfie');
@@ -726,19 +792,20 @@ function shoot(){
   stopCamera();
   S.rawPhoto = dataUrl;
   S.aiAttempt = 0;
+  S.editStarted = false;
   go('s2');
   requestAI();
 }
 $('fileInput').addEventListener('change', function(e){
   const f=e.target.files && e.target.files[0]; if(!f) return;
   const r=new FileReader();
-  r.onload=function(ev){ S.rawPhoto=ev.target.result; S.aiAttempt=0; go('s2'); requestAI(); };
+  r.onload=function(ev){ S.rawPhoto=ev.target.result; S.aiAttempt=0; S.editStarted=false; go('s2'); requestAI(); };
   r.readAsDataURL(f);
   e.target.value='';
 });
 
 /* ---------------------------------------------------------------------------
-   10) AI call – mandatory, 30 s timeout, 3 automatic attempts
+   11) AI call
    --------------------------------------------------------------------------- */
 function showAiBadge(txt){ $('aiBadgeTxt').textContent=txt; $('aiBadge').style.display=''; }
 function hideAiBadge(){ $('aiBadge').style.display='none'; }
@@ -798,7 +865,7 @@ function loadImageTimed(src, ms){
 }
 
 /* ---------------------------------------------------------------------------
-   11) SCREEN 2 – design cards, date, fixed 20 s countdown
+   12) SCREEN 2 – cards, date, fixed countdown
    --------------------------------------------------------------------------- */
 function buildCards(){
   const box=$('designCards'); box.innerHTML='';
@@ -807,7 +874,7 @@ function buildCards(){
     const c=document.createElement('canvas'); c.width=240; c.height=240;
     const nm=document.createElement('div'); nm.className='nm'; nm.setAttribute('data-t',f.key); nm.textContent=T(f.key);
     d.appendChild(c); d.appendChild(nm);
-    d.addEventListener('click',function(){ S.frame=i; drawPreview(); /* countdown NOT reset */ });
+    d.addEventListener('click',function(){ S.frame=i; drawPreview(); /* countdown untouched */ });
     box.appendChild(d);
   });
 }
@@ -826,32 +893,24 @@ function drawPreview(){
 }
 $('dateInput').addEventListener('change', function(e){
   S.date = e.target.value || todayISO();
-  drawPreview();                      /* countdown NOT reset */
+  drawPreview();                      /* countdown untouched */
 });
 function enterEdit(){
   $('dateInput').value = S.date;
   drawPreview();
-  startEditCountdown();
-}
-function startEditCountdown(){
-  clearTimer('edit');
-  let n=CONFIG.EDIT_COUNTDOWN;
-  const b=$('cd2'); b.style.display=''; b.textContent=n; b.classList.remove('pulse');
-  timers.edit=setInterval(function(){
-    n--; b.textContent=Math.max(n,0);
-    if(n<=5) b.classList.add('pulse');
-    if(n<=0){ clearTimer('edit'); openModal(); }
-  },1000);
+  if(!S.editStarted){                 /* start once per session only */
+    S.editStarted = true;
+    runCountdown('edit', CONFIG.EDIT_COUNTDOWN, $('cd2'), $('bar2'), $('timer2'), openModal);
+  }
 }
 function openModal(){
   $('modalTimeout').classList.add('show');
-  clearTimer('modal');
-  timers.modal=setTimeout(function(){ go('s0'); }, CONFIG.MODAL_TIMEOUT*1000);
+  runCountdown('modal', CONFIG.MODAL_TIMEOUT, $('modalCd'), null, null, function(){ go('s0'); });
 }
 function closeModal(){ $('modalTimeout').classList.remove('show'); clearTimer('modal'); }
 
 /* ---------------------------------------------------------------------------
-   12) Export + print
+   13) Export + print
    --------------------------------------------------------------------------- */
 function exportJpeg(){
   const N=CONFIG.EXPORT_SIZE;
@@ -894,7 +953,7 @@ async function doPrint(){
 }
 
 /* ---------------------------------------------------------------------------
-   13) language switching
+   14) language
    --------------------------------------------------------------------------- */
 function setLang(l){
   LANG=l;
@@ -913,14 +972,14 @@ function setLang(l){
 })();
 
 /* ---------------------------------------------------------------------------
-   14) wiring
+   15) wiring
    --------------------------------------------------------------------------- */
 $('btnStart').addEventListener('click', function(e){ e.stopPropagation(); go('s1'); });
 $('s0').addEventListener('click', function(e){ if(e.target.closest('.lang-btn')) return; go('s1'); });
 $('btnBack1').addEventListener('click', function(){ go('s0'); });
 $('btnBack1b').addEventListener('click', function(){ go('s0'); });
 $('btnShoot').addEventListener('click', shoot);
-$('btnRetryCam').addEventListener('click', function(){ $('cd1').style.display=''; $('btnShoot').style.display=''; startCamera(); });
+$('btnRetryCam').addEventListener('click', function(){ $('timer1').style.display=''; $('btnShoot').style.display=''; startCamera(); });
 $('btnUpload').addEventListener('click', function(){ $('fileInput').click(); });
 $('btnCancel2').addEventListener('click', function(){ go('s0'); });
 $('btnRetryAi').addEventListener('click', function(){ S.aiAttempt=0; requestAI(); });
@@ -935,12 +994,15 @@ document.addEventListener('visibilitychange', function(){ if(document.hidden && 
 (async function boot(){
   document.documentElement.style.setProperty('--ink', CONFIG.INK_COLOR);
   $('dateInput').value = S.date;
-  $('dateInput').min   = S.date;   // kiosk: no back-dating (delete this line to allow past dates)
+  $('dateInput').min   = S.date;   // kiosk: no back-dating (delete to allow past dates)
+  $('cd1').textContent = CONFIG.SELFIE_COUNTDOWN;
+  $('cd2').textContent = CONFIG.EDIT_COUNTDOWN;
+  $('modalCd').textContent = CONFIG.MODAL_TIMEOUT;
   buildCards();
   setLang(CONFIG.DEFAULT_LANG);
-  sizeStages();
   try{ await preloadFrames(); }catch(e){ console.warn('frame preload issue', e); }
   go('s0');
+  setTimeout(sizeStages, 60);
 })();
 </script>
 </body>
