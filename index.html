@@ -65,13 +65,17 @@
             font-weight: 600;
             margin-bottom: 4px;
         }
-        input[type="text"], input[type="date"], input[type="file"], select {
+        input[type="text"], input[type="date"], input[type="file"], input[type="range"], select {
             width: 100%;
             padding: 10px;
             border: 1px solid #d1d5db;
             border-radius: 8px;
             box-sizing: border-box;
             font-size: 0.9rem;
+        }
+        input[type="range"] {
+            padding: 0;
+            border: none;
         }
         .input-with-size {
             display: flex;
@@ -232,6 +236,7 @@
         <canvas id="snapshotCanvas" style="display:none;" width="600" height="600"></canvas>
     </div>
 
+    <!-- Control de Zoom -->
     <div class="form-group">
         <label id="lbl-zoom">Tamaño / Zoom Foto:</label>
         <div class="zoom-controls">
@@ -241,7 +246,7 @@
         </div>
     </div>
 
-    <!-- NUEVO: Controles para mover la foto Horizontal y Verticalmente -->
+    <!-- Controles para mover la foto (X e Y) -->
     <div class="form-group">
         <label id="lbl-pos-x">Mover Foto (Izquierda / Derecha):</label>
         <input type="range" id="posXRange" min="-150" max="150" step="2" value="0" oninput="drawStamp()">
@@ -252,6 +257,7 @@
         <input type="range" id="posYRange" min="-150" max="150" step="2" value="0" oninput="drawStamp()">
     </div>
 
+    <!-- Control de Trazos / Umbral (Brillo) -->
     <div class="form-group">
         <label id="lbl-brightness">Ajuste de Trazos / Detalle:</label>
         <div class="zoom-controls">
@@ -261,6 +267,7 @@
         </div>
     </div>
 
+    <!-- Controles de Texto -->
     <div class="form-group">
         <label id="lbl-top">Texto Superior:</label>
         <div class="input-with-size">
@@ -288,6 +295,7 @@
         </div>
     </div>
 
+    <!-- Colores -->
     <div class="form-group">
         <label id="lbl-color">Color de Tinta:</label>
         <div class="color-pickers">
@@ -298,6 +306,7 @@
         </div>
     </div>
 
+    <!-- Canvas Preview -->
     <div class="preview-container">
         <canvas id="stampCanvas" width="600" height="600"></canvas>
         <div id="aiLoadingBadge" class="loading-badge">⚜️ Ultreia et Suseia... ⚜️</div>
@@ -328,6 +337,7 @@
         drawStamp();
     });
 
+    // --- FUNCIONES DE CÁMARA ---
     async function toggleCamera() {
         const box = document.getElementById('cameraContainer');
         const video = document.getElementById('cameraFeed');
@@ -372,6 +382,7 @@
         closeCamera();
         sendToMakeWebhook(base64Data);
     }
+    // ---------------------------
 
     function adjustFontSize(key, delta) {
         fontSizes[key] = Math.min(Math.max(fontSizes[key] + delta, 12), 48);
@@ -480,7 +491,7 @@
                 aiImg.crossOrigin = "anonymous";
                 aiImg.onload = function() {
                     userImage = aiImg;
-                    // Reset position sliders when new photo arrives
+                    // Resetear los sliders de posición al llegar una foto nueva
                     document.getElementById('posXRange').value = 0;
                     document.getElementById('posYRange').value = 0;
                     drawStamp();
@@ -501,6 +512,7 @@
     });
 
     function drawStamp() {
+        // Fondo estrictamente blanco para exportar JPG limpio
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -508,11 +520,11 @@
         const innerCropRadius = 170;
         let threshold = parseInt(document.getElementById('thresholdRange').value);
         
-        // Obtener los valores de desplazamiento X e Y
+        // Obtener valores de posición X e Y
         let offsetX = parseInt(document.getElementById('posXRange').value);
         let offsetY = parseInt(document.getElementById('posYRange').value);
 
-        // 1. FOTO DEL PEREGRINO CON POSICIÓN DESPLAZABLE
+        // 1. FOTO DEL PEREGRINO (CON ZOOM Y DESPLAZAMIENTO)
         if (userImage) {
             let tempImgCanvas = document.createElement('canvas');
             tempImgCanvas.width = canvas.width;
@@ -527,7 +539,7 @@
             const baseSize = innerCropRadius * 2.2;
             const size = baseSize * currentZoom;
             
-            // Aplicar el desplazamiento offsetX e offsetY en el dibujo
+            // Dibuja la foto aplicando offsetX e offsetY
             iCtx.drawImage(
                 userImage, 
                 centerX - size/2 + offsetX, 
@@ -665,12 +677,13 @@
         ctx.fill();
     }
 
+    // 3. TEXTOS CON RADIOS Y ÁNGULOS INDEPENDIENTES
     function drawTexts() {
         const centerX = 300, centerY = 300;
         
         const radiusTop = 268;         
-        const radiusBottomLeft = 295;  
-        const radiusBottomRight = 275; 
+        const radiusBottomLeft = 295;  // Radio Roncesvalles
+        const radiusBottomRight = 275; // Radio Fecha
         
         ctx.fillStyle = currentColor;
 
@@ -714,10 +727,11 @@
         ctx.restore();
     }
 
+    // 4. DESCARGA EN FORMATO JPG (.jpg) PARA IMPRESORAS REINER
     function downloadStamp() {
         let link = document.createElement('a');
-        link.download = 'sello-peregrino.png';
-        link.href = canvas.toDataURL('image/png');
+        link.download = 'sello-peregrino.jpg'; // Extensión limpia a .jpg
+        link.href = canvas.toDataURL('image/jpeg', 0.95); // Forzamos JPG con 95% de calidad
         link.click();
     }
 </script>
